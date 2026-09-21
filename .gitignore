@@ -30,3 +30,6 @@ local.properties
 # OS
 .DS_Store
 Thumbs.db
+
+# The build log lives on the private archive only, never here
+PROGRESS.md
