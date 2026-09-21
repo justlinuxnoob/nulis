@@ -1,0 +1,243 @@
+<resources>
+    <string name="app_name">Nulis Launcher</string>
+    <!-- The launcher's own row in its own drawer; tapping it opens settings. -->
+    <string name="nulis_settings">Nulis Settings</string>
+
+    <string name="apps_hint_no_favorites">Tap to pick your apps</string>
+    <string name="apps_choose">Choose apps</string>
+    <string name="picker_label">Choose apps</string>
+    <string name="picker_done">Done</string>
+
+    <string name="drawer_search_hint">Search apps, notes, sums</string>
+    <string name="drawer_recent">Recent</string>
+    <string name="drawer_work">Work</string>
+    <string name="drawer_hit_task">Task</string>
+    <string name="drawer_hit_setting">Nulis settings</string>
+    <string name="menu_category">Category</string>
+    <string name="menu_category_none">No category</string>
+    <string name="categories_title">Categories</string>
+    <string name="categories_new">New category</string>
+    <string name="categories_create">Create</string>
+    <string name="categories_hint">Group apps in the drawer. An app belongs to one group at most.</string>
+    <string name="categories_empty">No categories yet</string>
+    <string name="categories_delete">Delete category</string>
+    <string name="categories_delete_confirm">Tap again to delete</string>
+    <string name="categories_members">Apps in this category</string>
+    <string name="settings_drawer">Drawer</string>
+    <string name="settings_category_display">Groups look like</string>
+    <string name="settings_categories">Categories</string>
+    <string name="settings_auto_hide">Rest unused apps</string>
+    <string name="settings_auto_hide_off">Off</string>
+    <string name="settings_auto_hide_hint">Out of the list, still found by typing</string>
+    <string name="settings_recents">Recent apps row</string>
+    <string name="settings_recents_hint">At the top of the drawer</string>
+    <string name="settings_search_notes">Search my writing</string>
+    <string name="settings_search_notes_hint">Notes and open tasks in drawer results</string>
+    <string name="settings_search_settings">Search Nulis settings</string>
+    <string name="settings_search_settings_hint">Find a setting by typing its name</string>
+
+    <string name="icons_mode">Icons</string>
+    <string name="icons_shape">Shape</string>
+    <string name="icons_size">Size</string>
+    <string name="icons_color">Colour</string>
+    <string name="settings_app_icons">App icons</string>
+    <string name="settings_app_icons_hint">Used in the drawer and every app list</string>
+    <string name="settings_icon_pack">Icon pack</string>
+    <string name="settings_icon_pack_none">App\'s own icons</string>
+    <string name="settings_icon_pack_empty">No icon packs installed</string>
+    <string name="settings_hidden_apps">Hidden apps</string>
+    <string name="settings_hidden_apps_none">None hidden</string>
+    <string name="settings_search_hidden">Find hidden apps in search</string>
+    <string name="settings_search_hidden_hint">Off keeps them out of results too</string>
+    <string name="settings_drawer_placement">Where the drawer is</string>
+    <string name="settings_not_home">Nulis is not your home screen</string>
+    <string name="settings_not_home_hint">Pressing Home opens something else. Tap to change it</string>
+    <string name="settings_notification_dots">Notification dots</string>
+    <string name="settings_notification_dots_hint">A dot on apps with something waiting. Never a count, a name or a preview</string>
+    <string name="menu_rename">Rename</string>
+    <string name="menu_choose_icon">Choose icon</string>
+    <string name="menu_reset_icon">Use the original icon</string>
+    <string name="menu_hide">Hide from drawer</string>
+    <string name="menu_unhide">Show in drawer</string>
+    <string name="rename_label">Rename</string>
+    <string name="rename_reset">Original name</string>
+    <string name="rename_save">Save</string>
+    <string name="choose_icon_label">Choose icon</string>
+    <string name="choose_icon_search">Search icons</string>
+    <string name="menu_add_to_home">Add to home</string>
+    <string name="menu_remove_from_home">Remove from home</string>
+    <string name="menu_home_full">Home is full</string>
+    <string name="menu_no_apps_block">No apps block on home</string>
+    <string name="menu_app_info">App info</string>
+    <string name="menu_uninstall">Uninstall</string>
+
+    <string name="options_style">Style</string>
+    <string name="options_settings">Settings</string>
+    <string name="options_remove">Remove</string>
+    <string name="options_align">Alignment</string>
+
+    <string name="page_options_align">Alignment</string>
+    <string name="page_options_density">Spacing</string>
+    <string name="page_options_hint">Blocks can override the alignment one by one</string>
+
+    <string name="edit_label">Edit page</string>
+    <string name="edit_done">Done</string>
+    <string name="edit_add_block">Add block</string>
+    <string name="page_empty_hint">Long-press to add blocks</string>
+    <string name="edit_empty_page">This page is empty. Add a block below.</string>
+    <string name="theme_black">Black</string>
+    <string name="theme_white">White</string>
+    <string name="theme_custom">Custom</string>
+
+    <string name="settings_label">Settings</string>
+    <string name="settings_title">Nulis</string>
+    <string name="settings_arrangement">Arrangement</string>
+    <string name="settings_layouts">Layouts</string>
+    <string name="settings_layouts_hint">Which blocks sit where, on how many pages. The look stays as you set it</string>
+    <string name="settings_setups">Saved setups</string>
+    <string name="settings_setups_hint">Keep this whole setup - pages and look together - and come back to it</string>
+    <string name="settings_wallpaper">Show wallpaper</string>
+    <string name="settings_wallpaper_hint">Your phone\'s wallpaper behind the pages</string>
+    <string name="settings_wallpaper_dim">Dim</string>
+    <string name="settings_look">Look</string>
+    <string name="settings_background">Background</string>
+    <string name="settings_type">Type</string>
+    <string name="settings_type_display">Display face: clocks, dates, titles</string>
+    <string name="settings_type_body">Body face: text, lists, labels</string>
+    <string name="settings_text_size">Text size</string>
+    <string name="settings_uppercase_labels">Shout small labels</string>
+    <string name="settings_uppercase_labels_hint">Mono captions in capitals</string>
+    <string name="settings_footer">Nulis keeps everything on this phone. It has no internet permission at all.</string>
+    <string name="settings_left_gear">Settings gear on the left page</string>
+    <string name="settings_left_gear_hint">A small gear in the bottom corner. The drawer row and the long press still work either way</string>
+    <string name="about_what">What this is</string>
+    <string name="about_blurb">A home screen made of blocks you choose, arrange and restyle. Every page, every block and every setting lives in this app\'s own storage on this phone.</string>
+    <string name="about_privacy">Where your things go</string>
+    <string name="about_privacy_body">Nowhere. Nulis does not declare the internet permission, so Android will not let it open a connection even if it tried to. There is no analytics and no crash reporting.</string>
+    <string name="about_privacy_check">You can check that yourself: adb shell dumpsys package %1$s lists every permission it holds.</string>
+    <string name="about_version">Version</string>
+    <string name="settings_font_licenses">Font licences</string>
+    <string name="settings_font_licenses_hint">Every face Nulis ships, and its licence</string>
+    <string name="settings_font_licenses_blurb">Nulis bundles only fonts under the SIL Open Font License, and nothing is ever downloaded. The full licence text for each one is inside the app.</string>
+    <string name="settings_wellbeing">Wellbeing</string>
+    <string name="settings_wellbeing_apps">Pauses, limits and focus</string>
+    <string name="settings_wellbeing_apps_hint">A breath before an app, a daily number, a quiet hour</string>
+    <string name="settings_week">Your week</string>
+    <string name="settings_week_hint">Screen time, steps, mindful minutes</string>
+    <string name="settings_display">Display</string>
+    <string name="settings_hide_status_bar">Hide status bar</string>
+    <string name="settings_hide_status_bar_hint">Only while Nulis is on screen</string>
+    <string name="settings_show_app_usage">Minutes in app lists</string>
+    <string name="settings_show_app_usage_hint">Today\'s screen time next to app names</string>
+    <string name="settings_gestures">Gestures</string>
+    <string name="settings_gestures_reset">Reset to defaults</string>
+    <string name="settings_gestures_full_version">Full version</string>
+    <string name="settings_gestures_choose_app">Choose an app</string>
+    <string name="settings_gestures_escape">Kept open so you can always get back in</string>
+    <string name="settings_sound">Sound</string>
+    <string name="settings_sound_row">Interface sounds</string>
+    <string name="settings_sound_hint">Short tones made in code; no audio files anywhere</string>
+    <string name="settings_sound_volume">Volume</string>
+    <string name="settings_reduced_motion">Reduced motion</string>
+    <string name="settings_reduced_motion_hint">Calmer springs, still animated blocks</string>
+    <string name="settings_backup">Backup</string>
+    <string name="settings_backup_row">Export, import, reset</string>
+    <string name="settings_backup_hint">One file with everything in it</string>
+    <string name="settings_page">Page</string>
+    <string name="settings_edit_page">Edit this page</string>
+    <string name="settings_edit_page_hint">Add, move and remove blocks</string>
+    <string name="settings_rerun_setup">Run setup again</string>
+    <string name="settings_rerun_setup_hint">The first-launch flow, from the start</string>
+    <string name="settings_hue">Hue</string>
+    <string name="settings_saturation">Saturation</string>
+    <string name="settings_lightness">Lightness</string>
+    <string name="settings_ink">Ink</string>
+    <string name="settings_ink_auto">Auto</string>
+
+    <string name="music_listener_label">Nulis music controls</string>
+
+    <string name="add_label">Add block</string>
+    <string name="add_title">Blocks</string>
+    <string name="block_unknown">Unknown block</string>
+
+    <plurals name="categories_apps">
+        <item quantity="one">%1$d app</item>
+        <item quantity="other">%1$d apps</item>
+    </plurals>
+    <plurals name="settings_auto_hide_days">
+        <item quantity="one">%1$d day</item>
+        <item quantity="other">%1$d days</item>
+    </plurals>
+    <plurals name="page_options_blocks">
+        <item quantity="one">%1$d block</item>
+        <item quantity="other">%1$d blocks</item>
+    </plurals>
+    <plurals name="about_fonts">
+        <item quantity="one">%1$d open-licensed face, with the full text of its licence</item>
+        <item quantity="other">%1$d open-licensed faces, with the full text of each licence</item>
+    </plurals>
+    <plurals name="about_block_types">
+        <item quantity="one">%1$d block type</item>
+        <item quantity="other">%1$d block types</item>
+    </plurals>
+    <plurals name="about_block_styles">
+        <item quantity="one">%1$d style between them</item>
+        <item quantity="other">%1$d styles between them</item>
+    </plurals>
+    <string name="pages_label">Pages</string>
+    <string name="pages_title">Your pages</string>
+    <string name="pages_is_home">This is home</string>
+    <string name="pages_make_home">Make home</string>
+    <string name="pages_remove">Remove page</string>
+    <string name="pages_add_label">Another page</string>
+    <string name="pages_add">Add a page</string>
+    <string name="pages_add_hint">A page is exactly one screen. When one is full, another one is the room you need.</string>
+    <string name="settings_pages">Pages</string>
+    <string name="settings_pages_hint">Add, remove, reorder, and choose which one is home</string>
+    <string name="no_room_label">No room</string>
+    <string name="no_room_title">%1$s does not fit on this page</string>
+    <string name="no_room_grow_title">There is nothing to grow into</string>
+    <string name="no_room_body">A page is exactly one screen, and this one is full. Make something on it smaller, or put this on a page of its own.</string>
+    <string name="no_room_body_full">A page is exactly one screen, and this one is full. Nulis already has all %1$d of its pages, so something here has to get smaller.</string>
+    <string name="no_room_shrink">Shrink something</string>
+    <string name="no_room_new_page">New page</string>
+    <string name="pages_remove_keep">Keep it</string>
+    <string name="edit_refused">No room there</string>
+    <string name="edit_coach">Drag a block to move it. Pull a knob to resize it, or use the bar below. Tap one to pick it up.</string>
+    <string name="edit_coach_dismiss">Tap to dismiss</string>
+    <string name="options_open">Options</string>
+    <string name="icons_pixel_grid">Pixel grid</string>
+    <string name="icons_pixel_ink">Pixel ink</string>
+    <string name="edit_resize_corner">Resize from this corner</string>
+    <string name="edit_resize_edge">Resize this edge</string>
+    <string name="edit_size_wider">Wider</string>
+    <string name="edit_size_narrower">Narrower</string>
+    <string name="edit_size_taller">Taller</string>
+    <string name="edit_size_shorter">Shorter</string>
+    <string name="edit_deselect">Put this block down</string>
+    <string name="options_duplicate">Duplicate</string>
+    <plurals name="pages_add_full">
+        <item quantity="one">%1$d page is the most Nulis keeps. Remove one to add another.</item>
+        <item quantity="other">%1$d pages is the most Nulis keeps. Remove one to add another.</item>
+    </plurals>
+    <plurals name="pages_remove_warning">
+        <item quantity="one">This page and the %1$d block on it go. Your notes, journal and tasks stay.</item>
+        <item quantity="other">This page and the %1$d blocks on it go. Your notes, journal and tasks stay.</item>
+    </plurals>
+    <plurals name="edit_free_cells">
+        <item quantity="one">%1$d cell free</item>
+        <item quantity="other">%1$d cells free</item>
+    </plurals>
+    <plurals name="edit_size_width">
+        <item quantity="one">%1$d wide</item>
+        <item quantity="other">%1$d wide</item>
+    </plurals>
+    <plurals name="edit_size_height">
+        <item quantity="one">%1$d tall</item>
+        <item quantity="other">%1$d tall</item>
+    </plurals>
+    <plurals name="apps_more_hidden">
+        <item quantity="one">%1$d more — make this block bigger</item>
+        <item quantity="other">%1$d more — make this block bigger</item>
+    </plurals>
+</resources>

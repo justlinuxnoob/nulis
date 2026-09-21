@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.NulisLauncher" parent="android:Theme.Material.NoActionBar">
+        <!-- The real background is set at runtime from the saved theme; no preview window, so a
+             light theme never flashes black while the process starts. -->
+        <item name="android:windowBackground">@android:color/black</item>
+        <item name="android:windowDisablePreview">true</item>
+        <item name="android:windowShowWallpaper">false</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+</resources>

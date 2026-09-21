@@ -1,0 +1,5 @@
+# Baseline profile: everything in our own package is small and all of it is on the interaction
+# path (home, drawer, sheets), so mark it hot + startup so ART compiles it ahead of time instead
+# of interpreting it on the first open of the drawer. Compose's own profiles are merged in by AGP.
+HSPLcom/nulis/launcher/**->**(**)**
+Lcom/nulis/launcher/**

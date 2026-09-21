@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- Screen time block. Special permission: only the user can grant it, in system settings, after our explanation screen. -->
+    <uses-permission
+        android:name="android.permission.PACKAGE_USAGE_STATS"
+        tools:ignore="ProtectedPermissions" />
+    <!-- Steps block: runtime permission for the hardware step counter, asked after our explanation screen. -->
+    <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
+    <uses-feature android:name="android.hardware.sensor.stepcounter" android:required="false" />
+
+    <!-- Calendar block, agenda styles only. Optional: the week strip works without it, and the
+         permission is asked for behind an explanation the user can decline. Read-only. -->
+    <uses-permission android:name="android.permission.READ_CALENDAR" />
+
+    <!-- Gestures: pulling down the notification shade or quick settings. Normal protection level,
+         granted at install with no prompt, and it only opens a panel - it reads nothing. -->
+    <uses-permission android:name="android.permission.EXPAND_STATUS_BAR" />
+
+    <!-- Needed on Android 11+ to see other apps' launcher activities. No INTERNET permission, ever. -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
+        <!-- Icon packs. The long-standing ADW / Nova contract: an app that answers one of these
+             ships an appfilter.xml mapping components to drawable names. Reading it needs no
+             permission, only the right to see that the app is installed. -->
+        <intent><action android:name="org.adw.launcher.THEMES" /></intent>
+        <intent><action android:name="com.novalauncher.THEME" /></intent>
+        <intent><action android:name="com.gau.go.launcherex.theme" /></intent>
+        <intent><action android:name="com.anddoes.launcher.THEME" /></intent>
+        <!-- Clock and date blocks: finding which app handles alarms and which one is the
+             calendar, so a tap on the clock or the date opens it. Visibility only; we send no
+             alarm intent and hold no alarm permission. -->
+        <intent><action android:name="android.intent.action.SHOW_ALARMS" /></intent>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.APP_CALENDAR" />
+        </intent>
+        <!-- The six apps a fresh install puts on the home page. Visibility only: Nulis asks who
+             owns each role and then opens that app the ordinary way, and sends none of these
+             intents itself. -->
+        <intent><action android:name="android.intent.action.DIAL" /></intent>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.APP_MESSAGING" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.APP_BROWSER" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.APP_GALLERY" />
+        </intent>
+        <intent><action android:name="android.media.action.STILL_IMAGE_CAMERA" /></intent>
+    </queries>
+
+    <application
+        android:allowBackup="false"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:label="@string/app_name"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.NulisLauncher">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:stateNotNeeded="true"
+            android:windowSoftInputMode="adjustResize"
+            android:theme="@style/Theme.NulisLauncher">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.HOME" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <!-- Music block. Reading media sessions needs an enabled notification listener; this one
+             overrides nothing and never reads a notification. Only the system holds the bind
+             permission, and the user turns it on in settings after our explanation screen. -->
+        <service
+            android:name=".blocks.music.NulisNotificationListener"
+            android:exported="true"
+            android:label="@string/music_listener_label"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
+        </service>
+
+        <!-- Steps block: wakes once a night to read the step counter, so a day's steps are filed
+             on that day. Not exported; only our own alarm can start it. -->
+        <receiver
+            android:name=".blocks.steps.StepsAlarmReceiver"
+            android:exported="false" />
+
+    </application>
+
+</manifest>
