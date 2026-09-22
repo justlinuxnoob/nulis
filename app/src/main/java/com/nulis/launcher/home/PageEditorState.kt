@@ -70,6 +70,23 @@ class PageEditorState(private val haptics: HapticFeedback) {
 
     private val undoStack = ArrayDeque<PageLayout>()
 
+    /**
+     * The page the editor has written and is still waiting to see come back.
+     *
+     * Every edit is written the moment it finishes, but the store answers on its own schedule,
+     * and the layout flowing back in is whatever it held when it was read. Between a resize
+     * finishing and its write landing, the page arriving here is still the page as it was
+     * *before* the resize - and taking it as the truth threw the new size away. It was invisible
+     * on its own, because the real write landed a moment later and put the size back; it was
+     * only fatal if a second gesture started inside that window, because a drag reads the draft
+     * to know how big the block it is carrying is. Resize a block, move it, and it landed at its
+     * old size.
+     *
+     * So the editor ignores incoming pages until it sees its own write return. Null means it is
+     * waiting for nothing and whatever arrives is news.
+     */
+    private var awaiting: PageLayout? = null
+
     /** How many steps can be taken back; read by the Undo button. */
     var undoDepth by mutableIntStateOf(0)
         private set
@@ -123,9 +140,16 @@ class PageEditorState(private val haptics: HapticFeedback) {
     fun sync(layout: PageLayout) {
         if (dragId != null || resizeId != null) return
         if (draft.pageId != layout.pageId) {
+            // A different page entirely: nothing the editor was holding applies to it.
             undoStack.clear()
             undoDepth = 0
             selectedId = null
+            awaiting = null
+        } else if (awaiting != null) {
+            // Still waiting for this editor's own write. Anything else is the page as it was
+            // before that write and is older than the draft, so it is not allowed to become it.
+            if (layout != awaiting) return
+            awaiting = null
         }
         if (draft != layout) draft = layout
     }
@@ -139,6 +163,7 @@ class PageEditorState(private val haptics: HapticFeedback) {
         while (undoStack.size > UndoDepth) undoStack.removeFirst()
         undoDepth = undoStack.size
         draft = next
+        awaiting = next
         onWrite(next)
     }
 
@@ -146,6 +171,7 @@ class PageEditorState(private val haptics: HapticFeedback) {
         val previous = undoStack.removeLastOrNull() ?: return
         undoDepth = undoStack.size
         draft = previous
+        awaiting = previous
         // Nothing is selected after an undo: the block that was picked may not exist any more.
         if (selectedId != null && previous.block(selectedId!!) == null) selectedId = null
         haptics.performHapticFeedback(NulisHaptics.tick)
