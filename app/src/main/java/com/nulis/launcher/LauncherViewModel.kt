@@ -85,6 +85,8 @@ import com.nulis.launcher.layout.extraPages
 import com.nulis.launcher.layout.layoutPages
 import com.nulis.launcher.setups.ApplyOptions
 import com.nulis.launcher.setups.SetupRepository
+import com.nulis.launcher.widgets.WidgetBlockDefinition
+import com.nulis.launcher.widgets.WidgetHost
 import com.nulis.launcher.setups.SavedSetup
 import com.nulis.launcher.setups.captureSetup
 import com.nulis.launcher.setups.setupPages
@@ -444,6 +446,34 @@ class LauncherViewModel(
 
     fun deleteSetup(id: String) {
         viewModelScope.launch { setupRepository.delete(id) }
+    }
+
+    /**
+     * Gives the system back every widget id nothing refers to any more.
+     *
+     * Deleting a widget block does not release its id where it happens, because Undo can put the
+     * block back and a released id comes back empty. What releases them is this: run once the
+     * editor has left the screen and once when the launcher starts, never while the editor is
+     * open, because the undo stack is the one thing that can still name a deleted block and it
+     * is not written down anywhere - it dies with the editor, and only then is an id that no
+     * page mentions really unreachable.
+     *
+     * Saved setups count too: applying one puts its widget blocks back, and an id released out
+     * from under a setup would restore as an empty rectangle.
+     *
+     * If any part of that count cannot be read, nothing is released at all. Leaking an id costs
+     * a row in a system table; releasing a live one costs the user the widget they were looking
+     * at, and there is no way to bind it back without the picker.
+     */
+    fun releaseUnusedWidgetIds(host: WidgetHost?) {
+        if (host == null) return
+        viewModelScope.launch {
+            val live = runCatching {
+                WidgetBlockDefinition.idsIn(layoutRepository.allSavedLayouts()) +
+                    WidgetBlockDefinition.idsIn(setupRepository.saved.first().flatMap { it.pages.values })
+            }.getOrNull() ?: return@launch
+            runCatching { host.releaseUnreferenced(live) }
+        }
     }
 
     fun setDisplayFont(id: String?) {

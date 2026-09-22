@@ -115,6 +115,7 @@ import com.nulis.launcher.ui.components.rememberSlideState
 import com.nulis.launcher.ui.theme.NulisHaptics
 import com.nulis.launcher.ui.theme.LineStyle
 import com.nulis.launcher.ui.theme.NulisMotion
+import com.nulis.launcher.widgets.LocalWidgetHost
 import com.nulis.launcher.ui.theme.ColorTheme
 import com.nulis.launcher.ui.theme.Fonts
 import com.nulis.launcher.ui.theme.Looks
@@ -309,6 +310,20 @@ fun LauncherRoute(
     // screen with no way out is the worst failure this app has, so the flag now says what is
     // true rather than what was intended.
     val editMode = editing != null
+    // An unused widget id goes back to the system here and nowhere else.
+    //
+    // Deleting the block cannot release it: Undo puts the block back, and an id that has been
+    // given away comes back as an empty rectangle. The undo stack lives and dies with the
+    // editor, so once the editor is off the screen a widget id that no saved page and no saved
+    // setup mentions is one nothing can reach. The wait is the editor's own fade: while it is
+    // still fading the bar is still there to be tapped.
+    val widgetHost = LocalWidgetHost.current
+    LaunchedEffect(editMode, widgetHost) {
+        if (!editMode) {
+            delay(NulisMotion.quick.toLong() * 2)
+            viewModel.releaseUnusedWidgetIds(widgetHost)
+        }
+    }
     // And the stale id itself goes, so the editor does not spring open later if that page
     // happens to come back.
     LaunchedEffect(editPageId, pagesConfig.ids) {

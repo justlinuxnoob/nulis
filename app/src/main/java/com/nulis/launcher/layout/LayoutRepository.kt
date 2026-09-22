@@ -225,6 +225,16 @@ class LayoutRepository(
     private fun existingPageKeys(prefs: Preferences): List<String> =
         prefs.asMap().keys.map { it.name }.filter { it.startsWith("page_") }.map { it.removePrefix("page_") }
 
+    /**
+     * Every layout the store holds, including one saved against a page that has dropped out of
+     * the swipe order. Used by anything that has to know what the whole phone still refers to -
+     * releasing an unused widget id, for one - where missing a page would throw a live thing away.
+     */
+    suspend fun allSavedLayouts(): List<PageLayout> {
+        val prefs = dataStore.data.first()
+        return existingPageKeys(prefs).mapNotNull { id -> prefs[key(id)]?.let { decode(it, id) } }
+    }
+
     /** Throws away every saved page and writes the defaults back. Used by "Reset Nulis". */
     suspend fun resetToDefaults() {
         dataStore.edit { prefs ->

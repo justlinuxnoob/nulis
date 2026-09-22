@@ -57,6 +57,34 @@ class WidgetHost(context: Context) {
         runCatching { host.deleteAppWidgetId(widgetId) }
     }
 
+    /**
+     * Every id this host still holds, or null when the system will not say.
+     *
+     * Null is not "none". A caller tidying up has to do nothing at all rather than read an
+     * unanswered question as an empty list, because the difference between the two is every
+     * widget on the phone.
+     */
+    fun knownIds(): Set<Int>? = runCatching { host.appWidgetIds.toSet() }.getOrNull()
+
+    /**
+     * Hands back every id this host holds that [live] does not mention, and answers how many.
+     *
+     * Deleting a widget block cannot release its id on the spot, because Undo puts that block
+     * straight back and an id is not handed back the same way it was given: the widget would
+     * return as an empty rectangle asking to be picked again. So nothing is released at the
+     * moment of deleting. Instead everything that can still name an id - a saved page, a saved
+     * setup, the editor's undo stack - is counted up once the editor is gone, and whatever the
+     * host is holding beyond that is what nothing can reach any more.
+     *
+     * A [live] set that is short by even one page would throw away a widget somebody is looking
+     * at, so the caller builds it from the store or does not call at all.
+     */
+    fun releaseUnreferenced(live: Set<Int>): Int {
+        val stale = (knownIds() ?: return 0) - live
+        stale.forEach { forget(it) }
+        return stale.size
+    }
+
     /** What is bound to [widgetId], or null when nothing is - an uninstalled app, a stale id. */
     fun providerFor(widgetId: Int): AppWidgetProviderInfo? =
         if (widgetId == INVALID) null else runCatching { manager.getAppWidgetInfo(widgetId) }.getOrNull()

@@ -36,6 +36,7 @@ import com.nulis.launcher.blocks.BlockDefinition
 import com.nulis.launcher.blocks.BlockStyle
 import com.nulis.launcher.blocks.GhostPhoto
 import com.nulis.launcher.blocks.GridSpan
+import com.nulis.launcher.blocks.PageLayout
 import com.nulis.launcher.blocks.blockAlign
 import com.nulis.launcher.blocks.blockArea
 import com.nulis.launcher.ui.components.Caption
@@ -72,6 +73,16 @@ object WidgetBlockDefinition : BlockDefinition {
 
     fun withWidgetId(block: Block, id: Int): Block =
         block.copy(settings = block.settings + (KEY_ID to id.toString()))
+
+    /**
+     * Every widget id [layouts] still refer to: the root set for
+     * [WidgetHost.releaseUnreferenced]. Duplicating a widget block copies its id, so two blocks
+     * can name one widget and a set, not a count, is what decides whether it is still wanted.
+     */
+    fun idsIn(layouts: Iterable<PageLayout>): Set<Int> =
+        layouts.flatMapTo(mutableSetOf()) { layout ->
+            layout.blocks.filter { it.type == type }.map(::widgetId)
+        } - WidgetHost.INVALID
 
     private fun gray(block: Block): Boolean = block.settings[KEY_GRAY] == "true"
 
