@@ -4,7 +4,7 @@ A home screen made of blocks.
 
 Nulis is a minimal Android launcher that is also deeply customisable. A **page is exactly one
 screen** — a 6 × 12 grid — and a **block** is a rectangle on it: a clock, the date, your apps, what
-is playing, a note, a countdown, a real Android widget, a cat walking across the screen. Nothing
+is playing, a note, your habits, a real Android widget, a cat walking across the screen. Nothing
 scrolls, nothing is taller than the screen, and empty space is allowed and normal.
 
 It is offline forever. There is no `INTERNET` permission, no analytics, no crash reporter and no
@@ -12,16 +12,18 @@ account. Nothing you type into it can leave the phone, and you can check that yo
 command — see [Privacy](#privacy).
 
 <p align="center">
-  <img src="docs/screenshots/home.png" width="220" alt="A fresh install: clock, date, six apps">
-  <img src="docs/screenshots/editor.png" width="220" alt="The editor: the real page, with resize knobs and the block's controls in the bottom bar">
-  <img src="docs/screenshots/drawer.png" width="220" alt="The app drawer with its A-Z rail">
+  <img src="docs/store/screenshots/1-home.png" width="200" alt="The default home page: clock, date, six apps">
+  <img src="docs/store/screenshots/5-editor.png" width="200" alt="The editor: the real page, with resize knobs and the block's controls in the bottom bar">
+  <img src="docs/store/screenshots/6-blocks.png" width="200" alt="The block picker, every block a live preview">
+  <img src="docs/store/screenshots/8-drawer.png" width="200" alt="The app drawer with its A-Z rail">
 </p>
 <p align="center">
-  <img src="docs/screenshots/blocks.png" width="220" alt="The block picker, every block a live preview">
-  <img src="docs/screenshots/layouts.png" width="220" alt="The layout picker, each layout a full-height live preview">
-  <img src="docs/screenshots/settings.png" width="220" alt="Settings">
+  <img src="docs/store/screenshots/2-stats-page.png" width="200" alt="The page to the right of home: steps, screen time, battery">
+  <img src="docs/store/screenshots/3-writing-page.png" width="200" alt="The page to the left of home: a greeting, the journal, notes">
+  <img src="docs/store/screenshots/4-habits.png" width="200" alt="A page with the Habits block and a task list">
+  <img src="docs/store/screenshots/7-clean-white.png" width="200" alt="The Clean look on white">
 </p>
-<p align="center"><em>Shot on a stock Android 16 emulator with no accounts and no apps of anybody's own.</em></p>
+<p align="center"><em>Rendered by the screenshot tests from the real code, with demo apps that belong to nobody.</em></p>
 
 ---
 
@@ -53,7 +55,8 @@ scales back, the grid appears and every block gets an outline. From there:
 
 ### Blocks
 
-26 block types. Every style survives any legal rectangle, every style honours the page's
+27 block types. Every style survives any legal rectangle - a word or a number is never broken to
+fit, the block shrinks instead, every style honours the page's
 alignment, and every block that has nothing to show yet draws the *shape* of what it will hold —
 ruled lines for something you write on, an unticked box for a checklist, a readout reading zero —
 rather than a sentence telling you what to do.
@@ -64,13 +67,14 @@ rather than a sentence telling you what to do.
 | **Date** | 8 styles, from a quiet line under the clock to a full-bleed ghost month |
 | **Glance** | One line with the slots you choose: time, date, battery, steps, screen time, next alarm, now playing |
 | **Apps** | As many of your chosen apps as the rectangle holds, as a list or a grid, with their own icon style |
-| **Widget** | One real Android widget, hosted inside the block, resized with it, optionally in grey |
+| **Widget** | One real Android widget, hosted inside the block, resized with it, optionally in grey. Widgets with a setup screen get it, and can be set up again |
 | **Battery** | 6 shapes: percent, segments, pill, ring, cell, gauge |
 | **Steps** | 7: number, progress, seven-day chart, walker, ring, dots, today against your average |
-| **Screen time** | 5: total, top three, donut, split bar, a dot grid of five-minute blocks |
+| **Screen time** | 5: total, top three, donut, split bar, a dot grid of five-minute blocks. Counts time in apps, and shows time with the screen on (what Digital Wellbeing reports) beside it |
 | **Music** | 6: beat bars, minimal, art, compact row, spinning vinyl, marquee |
 | **Your week** | The way in to the seven-day summary, from a page rather than from settings |
 | **Notes, Journal, Tasks** | Writing that lives on the home screen and autosaves |
+| **Habits** | 3: a week of dots per habit, today's habits as pills, the longest streak. Tap to tick today |
 | **Countdown** | Days or a bar to a date you choose |
 | **Quote** | 32 public-domain lines, a new one each day |
 | **Calculator** | A display, or a working keypad on the page |
@@ -90,9 +94,9 @@ is a full-height live preview of each, drawn with this phone's own clock, batter
 ### Looks and colours
 
 Two looks — **DOT** (Doto, dotted hairlines) and **CLEAN** (thin Geist, solid hairlines) — and
-black, white, or any background you like with a text colour of your own and a contrast readout
+black, white, **Auto** (following the phone's dark mode), or any background you like with a text colour of your own and a contrast readout
 that says in plain words when the pair is too close to read. Eight palettes set background, text
-and accent together. The accent is yours; red stays reserved for destructive actions, so "delete"
+and accent together, and a ninth is drawn from your wallpaper's own colours. The accent is yours; red stays reserved for destructive actions, so "delete"
 never looks like "selected".
 
 ### Typography
@@ -122,8 +126,13 @@ the far right, or **off** — and moving it off the upward swipe hands that gest
   the system file picker. No permission needed.
 - **Sound.** Eight short synthesised tones for selections and toggles, off by default, generated at
   runtime — no audio files.
-- **Accessibility.** Every block has a content description; animation stops when the system says
-  reduce motion; nothing animates on a page you cannot see.
+- **Accessibility.** Every block and every tappable thing has a spoken name, and a test fails the
+  build if one does not; the pages go quiet while something covers them; everything fits at the
+  largest font scale; a Higher contrast setting lifts captions to 4.5:1; animation stops when the
+  system says reduce motion; on a tablet, blocks grow with their cells.
+- **Learnable without a tutorial.** Until each gesture has been used once, a quiet line along the
+  bottom of the home page says what it does - swipe up for apps, hold to edit, swipe sideways
+  for pages - acted out by a small glyph. Each goes away for good the first time you do it.
 
 ## Privacy
 
@@ -137,8 +146,9 @@ adb shell dumpsys package com.nulis.launcher | grep -A 40 'requested permissions
 `android.permission.INTERNET` is not in the list, and never will be. Or read the manifest in this
 repository: [`app/src/main/AndroidManifest.xml`](app/src/main/AndroidManifest.xml).
 
-Five permissions are declared. Four are optional, asked for only behind an explanation screen you
-can decline, and only when you use the feature that needs them. See [PRIVACY.md](PRIVACY.md).
+Four permissions are declared, plus notification access. All but one are optional, asked for only
+behind an explanation screen you can decline, and only when you use the feature that needs them.
+See [PRIVACY.md](PRIVACY.md).
 
 | Permission | For | Optional |
 |---|---|---|
@@ -150,10 +160,15 @@ can decline, and only when you use the feature that needs them. See [PRIVACY.md]
 
 ## Build
 
-Requires JDK 17 and the Android SDK (compileSdk 36). Minimum supported Android is 8.0 (API 26).
+Requires JDK 17+ (21 for the screenshot tests) and the Android SDK (compileSdk 36). Minimum
+supported Android is 8.0 (API 26).
+
+There are two flavors of one app: **play**, which goes to Google Play and contains no donation or
+payment link of any kind (Play's payments policy), and **github**, the same plus a "Buy me a
+coffee" row in About. Everything else is identical, down to the package name.
 
 ```bash
-./gradlew assemblePerf
+./gradlew assemblePlayPerf
 ```
 
 `perf` is the build type to use for anything you intend to judge: release-optimised (R8, not
@@ -161,7 +176,7 @@ debuggable) but signed with the debug key, so it installs over a debug build and
 The `debug` build is 5–10× slower per frame and must never be used to measure feel.
 
 ```bash
-adb install -r app/build/outputs/apk/perf/app-perf.apk
+adb install -r app/build/outputs/apk/play/perf/app-play-perf.apk
 adb shell am start -n com.nulis.launcher/.MainActivity
 adb shell am broadcast -a androidx.profileinstaller.action.INSTALL_PROFILE \
   -p com.nulis.launcher/androidx.profileinstaller.ProfileInstallReceiver
@@ -171,15 +186,32 @@ adb shell cmd package compile -m speed-profile -f com.nulis.launcher
 Tests and lint:
 
 ```bash
-./gradlew testPerfUnitTest lintPerf
+./gradlew testPlayPerfUnitTest testPlayDebugUnitTest lintPlayPerf lintGithubPerf
 ```
 
 The JVM unit tests cover the pure logic — expression evaluation, the grid and its migrations, the
 "make room" invariant the editor commits against, block settings, layout and setup application,
-the whole drawer model, gesture lock-out rules, wellbeing rules, the backup format, tone synthesis,
-palette contrast and the design tokens. Lint runs with `warningsAsErrors = true`.
+the whole drawer model, gesture lock-out rules, wellbeing rules, the backup format, habits and
+streaks, screen-on time, tone synthesis, palette and caption contrast, and the design tokens.
+Lint runs with `warningsAsErrors = true`.
 
-Every push to `main` builds the perf APK in CI and attaches it to a rolling `latest` prerelease.
+`testPlayDebugUnitTest` also runs the **screenshot tours**: Robolectric drives the real launcher
+through onboarding, the home pages, the editor, the drawer and every settings screen, and renders
+every style of every block in both looks on black and white. A screen that crashes, or a tappable
+thing a screen reader cannot name, fails the build. To see them:
+
+```bash
+./gradlew recordRoborazziPlayDebug     # images in app/build/screenshots/, store ones in docs/store/
+```
+
+### Releases
+
+`scripts/make-release-key.sh` makes a release key on your own computer, in `~/.nulis-release/`,
+outside the repository. With it, `./gradlew bundlePlayRelease` makes the Play bundle and
+`./gradlew assembleGithubRelease` the GitHub APK; without it, the same commands make unsigned
+builds. Every push to `main` builds the github flavor in CI and attaches it to a rolling `latest`
+prerelease; a `v*` tag makes a proper release. The store listing, graphics, Data safety answers and
+the Play Console walkthrough are in [`docs/store`](docs/store).
 
 ## How it is put together
 
@@ -224,7 +256,8 @@ Issues and pull requests are welcome. Before opening a PR:
 - Read [CLAUDE.md](CLAUDE.md). It is the house style, and it is short: Kotlin and Compose only, no
   new permissions or dependencies without a clear need, no network anything ever, and every UI
   built from the design tokens.
-- `./gradlew testPerfUnitTest lintPerf assemblePerf` must pass. Lint treats warnings as errors.
+- `./gradlew testPlayPerfUnitTest testPlayDebugUnitTest lintPlayPerf lintGithubPerf assemblePlayPerf`
+  must pass. Lint treats warnings as errors.
 - Keep the offline promise. A patch that adds `INTERNET`, an analytics SDK or a crash reporter will
   be declined however useful it is.
 - Say what you saw on a real phone. This project is judged by how it feels, not by how it reads.
@@ -246,4 +279,4 @@ assets, not to them.
 
 ## Status
 
-Version 0.1.0. Usable daily; not published to any store yet.
+Version 1.0.0. Used daily; ready for Google Play and GitHub releases.

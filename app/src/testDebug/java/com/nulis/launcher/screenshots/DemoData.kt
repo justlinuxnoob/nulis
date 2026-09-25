@@ -87,6 +87,7 @@ object DemoData {
         screenTime = ScreenTimeState(
             granted = true,
             totalMinutes = 94,
+            screenOnMinutes = 131,
             apps = listOf(
                 AppUsage(pkg("Messages"), "Messages", 31),
                 AppUsage(pkg("Browser"), "Browser", 24),

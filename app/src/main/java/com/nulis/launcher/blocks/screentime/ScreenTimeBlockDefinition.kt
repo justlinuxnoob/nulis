@@ -463,7 +463,7 @@ private fun ScreenTimeScreen(context: BlockContext, onClose: () -> Unit) {
     val colors = NulisTheme.colors
     val state = context.screenTime
     val max = state.apps.firstOrNull()?.minutes?.coerceAtLeast(1) ?: 1
-    NulisScreen(label = "Screen time today", title = formatMinutes(state.totalMinutes), onBack = onClose) {
+    NulisScreen(label = "Screen time", title = "Today", onBack = onClose) {
         // Two different questions, both worth answering: how long went on apps, and how long the
         // screen was on at all - the home screen, the shade and the switcher included, which is
         // what Digital Wellbeing counts.

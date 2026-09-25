@@ -84,7 +84,7 @@ fun BackupScreen(
         NulisScreen(label = "Backup", title = "Everything", onBack = onClose) {
             Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
                 Text(
-                    text = "One file with your pages, blocks, themes, settings, gestures, app names, " +
+                    text = "One file with your pages, blocks, saved setups, settings, gestures, app names, " +
                         "categories, notes, journal, tasks, habits and focus log in it. Plain JSON: you can open it " +
                         "and read it.",
                     style = NulisTheme.type.bodyM,
@@ -131,8 +131,8 @@ fun BackupScreen(
                 Spacer(Modifier.height(16.dp))
                 SectionLabel("Start again")
                 Text(
-                    text = "Puts Nulis back the way it came: default pages, default look, no themes of " +
-                        "your own, no categories, no gestures, and none of your writing. There is no undo.",
+                    text = "Puts Nulis back the way it came: default pages, default look, no saved setups of " +
+                        "your own, no categories, no gestures, and none of your writing or habits. There is no undo.",
                     style = NulisTheme.type.bodyM,
                     color = colors.secondary,
                 )
