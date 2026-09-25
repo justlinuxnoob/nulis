@@ -13,6 +13,7 @@ import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.nulis.launcher.drawer.DrawerPlacement
 import com.nulis.launcher.icons.IconStyle
@@ -80,6 +81,11 @@ data class UiPreferences(
     val onboarded: Boolean = false,
     /** True once the editor has said what a long press gives you. Said once, then never. */
     val editCoachSeen: Boolean = false,
+    /**
+     * The home page's hints somebody has outgrown, by [com.nulis.launcher.home.Hint.key]. A hint
+     * is learned by doing the thing it describes, never by dismissing it.
+     */
+    val learnedHints: Set<String> = emptySet(),
     /** How the user's app groups are laid out in the drawer. */
     val categoryDisplay: String = "SECTIONS",
     /** Hide apps not opened for this many days; 0 is off. They stay searchable either way. */
@@ -218,6 +224,10 @@ class UiPreferencesRepository(context: Context) {
         dataStore.edit { it[KEY_EDIT_COACH] = seen }
     }
 
+    suspend fun learnHint(key: String) {
+        dataStore.edit { prefs -> prefs[KEY_LEARNED_HINTS] = (prefs[KEY_LEARNED_HINTS] ?: emptySet()) + key }
+    }
+
     /**
      * Decides once, on the first run of a version that has onboarding, whether this phone is a
      * fresh install or an upgrade. An empty preferences file means fresh; anything already in it
@@ -225,7 +235,14 @@ class UiPreferencesRepository(context: Context) {
      */
     suspend fun ensureOnboardingFlag() {
         dataStore.edit { prefs ->
-            if (prefs[KEY_ONBOARDED] == null) prefs[KEY_ONBOARDED] = prefs.asMap().isNotEmpty()
+            val upgrade = prefs[KEY_ONBOARDED] ?: prefs.asMap().isNotEmpty()
+            if (prefs[KEY_ONBOARDED] == null) prefs[KEY_ONBOARDED] = upgrade
+            // The hints arrived after people had already been living with Nulis. Somebody who
+            // has been swiping up to their apps for a month does not need telling, so an
+            // existing install starts with every hint learned and only a new one sees them.
+            if (prefs[KEY_LEARNED_HINTS] == null) {
+                prefs[KEY_LEARNED_HINTS] = if (upgrade) com.nulis.launcher.home.Hint.entries.map { it.key }.toSet() else emptySet()
+            }
         }
     }
 
@@ -402,6 +419,10 @@ class UiPreferencesRepository(context: Context) {
             // Same rule as ensureOnboardingFlag, for the moment before it has run.
             onboarded = this[KEY_ONBOARDED] ?: asMap().isNotEmpty(),
             editCoachSeen = this[KEY_EDIT_COACH] ?: defaults.editCoachSeen,
+            // Written by ensureOnboardingFlag; until then, an install that is already past
+            // onboarding is one that has no use for hints.
+            learnedHints = this[KEY_LEARNED_HINTS]
+                ?: if (this[KEY_ONBOARDED] ?: asMap().isNotEmpty()) com.nulis.launcher.home.Hint.entries.map { it.key }.toSet() else emptySet(),
             categoryDisplay = this[KEY_CATEGORY_DISPLAY] ?: defaults.categoryDisplay,
             autoHideDays = this[KEY_AUTO_HIDE_DAYS] ?: defaults.autoHideDays,
             showRecents = this[KEY_SHOW_RECENTS] ?: defaults.showRecents,
@@ -436,6 +457,7 @@ class UiPreferencesRepository(context: Context) {
         val KEY_LEFT_GEAR = booleanPreferencesKey("left_page_gear")
         val KEY_ONBOARDED = booleanPreferencesKey("onboarded")
         val KEY_EDIT_COACH = booleanPreferencesKey("edit_coach_seen")
+        val KEY_LEARNED_HINTS = stringSetPreferencesKey("learned_hints")
         val KEY_CATEGORY_DISPLAY = stringPreferencesKey("category_display")
         val KEY_AUTO_HIDE_DAYS = intPreferencesKey("auto_hide_days")
         val KEY_SHOW_RECENTS = booleanPreferencesKey("show_recents")

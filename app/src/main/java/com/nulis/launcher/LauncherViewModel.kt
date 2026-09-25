@@ -501,6 +501,12 @@ class LauncherViewModel(
         viewModelScope.launch { uiPreferencesRepository.setEditCoachSeen(true) }
     }
 
+    /** Somebody just did what [hint] describes; it is never shown again. */
+    fun learnHint(hint: com.nulis.launcher.home.Hint) {
+        if (hint.key in uiPreferences.value.learnedHints) return
+        viewModelScope.launch { uiPreferencesRepository.learnHint(hint.key) }
+    }
+
     /**
      * Applies a whole setup during onboarding: the appearance and a finished set of pages, with
      * whatever apps have already been picked carried over.

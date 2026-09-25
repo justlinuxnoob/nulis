@@ -62,7 +62,12 @@ import com.nulis.launcher.apps.AppInfo
 import com.nulis.launcher.blocks.BlockContext
 import com.nulis.launcher.blocks.PageIds
 import com.nulis.launcher.home.PageMiniature
+import com.nulis.launcher.layout.DefaultLayouts
 import com.nulis.launcher.layout.LayoutPreset
+import com.nulis.launcher.gestures.GestureGlyph
+import com.nulis.launcher.gestures.GestureTrigger
+import com.nulis.launcher.gestures.SidewaysGlyph
+import com.nulis.launcher.gestures.rememberGesturePhase
 import com.nulis.launcher.icons.AppGlyph
 import com.nulis.launcher.icons.IconMode
 import com.nulis.launcher.icons.IconStyle
@@ -315,7 +320,9 @@ private fun LayoutStep(
                     Column(Modifier.width(186.dp)) {
                         NulisCard(
                             modifier = Modifier.fillMaxWidth(),
-                            selected = preset.id == appliedId,
+                            // A fresh phone is already wearing the first layout, so it is marked
+                            // as chosen rather than leaving a row of cards with nothing picked.
+                            selected = preset.id == (appliedId ?: DefaultLayouts.first.id),
                             shape = NulisShapes.tile,
                             contentPadding = 8.dp,
                             onClick = {
@@ -528,17 +535,20 @@ private fun PermissionsStep(permissions: List<OnboardingPermission>, onNext: () 
 @Composable
 private fun Done(onFinish: () -> Unit) {
     val colors = NulisTheme.colors
+    // Three gestures are the whole manual. Each one is acted out beside its sentence by the same
+    // little glyph Settings uses for gestures, so what a hand is meant to do is seen, not read.
+    val phase = rememberGesturePhase()
     Column(Modifier.fillMaxSize()) {
         Spacer(Modifier.weight(1f))
         Text("All set", style = NulisTheme.type.displayL, color = colors.onBackground)
-        Spacer(Modifier.height(16.dp))
-        Text(
-            "Long-press anywhere to edit this page: drag blocks about, resize them, add and remove. Swipe left or right for the other pages.",
-            style = NulisTheme.type.bodyL,
-            color = colors.secondary,
-        )
+        Spacer(Modifier.height(8.dp))
+        Text("Three things to know. The home screen reminds you of each until you have tried it.", style = NulisTheme.type.bodyM, color = colors.secondary)
         Spacer(Modifier.height(24.dp))
-        Caption("Settings live behind the gear in edit mode, or in the drawer", lines = 2)
+        GestureLine(title = "Swipe up", body = "Every app, and a search that also finds notes and settings", glyph = { GestureGlyph(GestureTrigger.SWIPE_UP, phase) })
+        GestureLine(title = "Hold anywhere", body = "Change the page: move, resize, add and remove blocks", glyph = { GestureGlyph(GestureTrigger.LONG_PRESS, phase) })
+        GestureLine(title = "Swipe sideways", body = "Your other pages. Add more, up to five", glyph = { SidewaysGlyph(phase) }, divider = false)
+        Spacer(Modifier.height(16.dp))
+        Caption("Settings are in the drawer, under Nulis Settings", lines = 2)
         Spacer(Modifier.weight(1f))
         PillButton(
             text = "Go to my home screen",
@@ -547,6 +557,16 @@ private fun Done(onFinish: () -> Unit) {
             modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
         )
     }
+}
+
+@Composable
+private fun GestureLine(title: String, body: String, glyph: @Composable () -> Unit, divider: Boolean = true) {
+    ListRow(
+        title = title,
+        subtitle = body,
+        leading = { Box(Modifier.size(40.dp), contentAlignment = Alignment.Center) { glyph() } },
+        divider = divider,
+    )
 }
 
 /** True when pressing Home already opens Nulis. */

@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.interaction.collectIsDraggedAsState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
@@ -87,6 +88,9 @@ import com.nulis.launcher.icons.LocalIconLoader
 import com.nulis.launcher.icons.MaxIconPx
 import com.nulis.launcher.home.BlockOptionsSheet
 import com.nulis.launcher.home.HomeScreen
+import com.nulis.launcher.home.Hint
+import com.nulis.launcher.home.HomeHint
+import com.nulis.launcher.home.nextHomeHint
 import com.nulis.launcher.home.NoRoomSheet
 import com.nulis.launcher.home.PageEditor
 import com.nulis.launcher.home.PageOptionsSheet
@@ -543,6 +547,8 @@ fun LauncherRoute(
                 actions = drawerActions,
                 onClose = closeDrawer,
                 modifier = drawerModifier,
+                holdHint = Hint.APP_MENU.key !in preferences.learnedHints,
+                onAppMenuOpened = { viewModel.learnHint(Hint.APP_MENU) },
             )
         }
 
@@ -552,6 +558,14 @@ fun LauncherRoute(
     val notificationDots = if (preferences.notificationDots && music.granted) liveDots else emptySet()
 
     val drawerOpen = drawer.target
+    // Each hint is learned by doing what it says, whichever way it was done.
+    LaunchedEffect(drawer.settledShown, onDrawerPage) {
+        if (drawer.settledShown || onDrawerPage) viewModel.learnHint(Hint.DRAWER)
+    }
+    LaunchedEffect(editMode) { if (editMode) viewModel.learnHint(Hint.EDIT) }
+    // A finger dragging the pager sideways, not the launcher scrolling itself to home.
+    val pagerDragged by pager.interactionSource.collectIsDraggedAsState()
+    LaunchedEffect(pagerDragged) { if (pagerDragged) viewModel.learnHint(Hint.PAGES) }
     val onHomePage = pager.currentPage == homeIndex && !pager.isScrollInProgress
     // Back on a side page returns to home; on home there is nowhere to go. Overlays register their own handlers.
     BackHandler(enabled = !drawerOpen && !editMode) { }
@@ -656,6 +670,27 @@ fun LauncherRoute(
         }
 
         PageDots(pager, homeIndex = homeIndex, drawerIndex = drawerPageIndex, visible = true, modifier = Modifier.align(Alignment.BottomCenter))
+
+        // One quiet line along the bottom of the home page until each gesture has been used
+        // once. Everything that opens over the page covers it, so it only has to know about the
+        // page itself: home, still, and not being edited.
+        val hintLine = remember(preferences.learnedHints, drawerPlacement, gestures, pageCount, preferences.onboarded) {
+            if (!preferences.onboarded) {
+                null
+            } else {
+                nextHomeHint(
+                    learned = preferences.learnedHints,
+                    drawerPlacement = drawerPlacement,
+                    swipeUpOpensDrawer = gestures.action(GestureTrigger.SWIPE_UP).let { it == GestureAction.OPEN_DRAWER || it == GestureAction.SEARCH_APPS },
+                    longPressEdits = gestures.action(GestureTrigger.LONG_PRESS).let { it == GestureAction.NOTHING || it == GestureAction.EDIT_MODE },
+                    pageCount = pagesConfig.ids.size,
+                )
+            }
+        }
+        HomeHint(
+            line = hintLine?.takeIf { onHomePage && !editMode && !drawerOpen && resumed },
+            modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 2.dp),
+        )
 
         // The editor is the page: the same blocks, the same data, one step back. It sits over
         // the pager rather than inside it so that paging, the drawer and every page gesture stop

@@ -47,27 +47,28 @@ class FirstRunTour : ScreenshotTest() {
         shot("07-all-set")
         tap("Go to my home screen")
         settle(3000)
-        shot("10-home")
-
-        compose.onRoot().performTouchInput { swipeRight() }
-        settle(1500)
-        shot("11-left-page")
-        compose.onRoot().performTouchInput { swipeLeft() }
-        settle(800)
-        compose.onRoot().performTouchInput { swipeLeft() }
-        settle(1500)
-        shot("12-right-page")
-        compose.onRoot().performTouchInput { swipeRight() }
-        settle(1500)
+        shot("10-home-hint-drawer")
 
         compose.onRoot().performTouchInput { swipeUp(startY = bottom * 0.7f, endY = top + 50f) }
         settle(1500)
-        shot("20-drawer")
-        compose.onRoot().performTouchInput { swipeDown(startY = top + 300f, endY = bottom - 50f) }
+        shot("11-drawer-hint-hold")
+        back()
         settle(1500)
+        shot("12-home-hint-edit")
 
         compose.onRoot().performTouchInput { longClick(center.copy(y = bottom * 0.9f)) }
         settle(1500)
-        shot("30-editor")
+        shot("13-editor")
+        tapIfShown("Tap to dismiss")
+        tap("Done")
+        settle(1500)
+        shot("14-home-hint-pages")
+
+        compose.onRoot().performTouchInput { swipeLeft() }
+        settle(1500)
+        shot("15-right-page")
+        compose.onRoot().performTouchInput { swipeRight() }
+        settle(1500)
+        shot("16-home-no-hints")
     }
 }
