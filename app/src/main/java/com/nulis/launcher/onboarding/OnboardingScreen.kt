@@ -64,6 +64,7 @@ import com.nulis.launcher.blocks.PageIds
 import com.nulis.launcher.home.PageMiniature
 import com.nulis.launcher.layout.LayoutPreset
 import com.nulis.launcher.icons.AppGlyph
+import com.nulis.launcher.icons.IconMode
 import com.nulis.launcher.icons.IconStyle
 import com.nulis.launcher.ui.theme.ColorTheme
 import com.nulis.launcher.ui.theme.LocalLook
@@ -416,10 +417,13 @@ private fun AppsStep(
     onNext: () -> Unit,
 ) {
     val full = favoriteIds.size >= maxFavorites
+    // Picking apps by name alone is picking from a phone book. Whatever the drawer is set to,
+    // this list shows the real icons, because this is where somebody recognises their apps.
+    val rowStyle = if (iconStyle.mode.hasIcon) iconStyle else iconStyle.copy(mode = IconMode.ICON)
     StepFrame(
         label = "Step 3",
         title = "Pick your apps",
-        blurb = "Up to $maxFavorites on the home page. Everything else is one swipe up, in the drawer.",
+        blurb = "The few you open every day, for the home page. Everything else is one swipe up, in the drawer.",
         primary = if (favoriteIds.isEmpty()) "Skip" else "Next (${favoriteIds.size})",
         onPrimary = onNext,
         body = {
@@ -431,7 +435,7 @@ private fun AppsStep(
                         title = app.label,
                         enabled = enabled,
                         onClick = { onToggle(app) },
-                        leading = if (iconStyle.mode.hasGlyph) ({ AppGlyph(app, iconStyle) }) else null,
+                        leading = { AppGlyph(app, rowStyle) },
                         trailing = { NulisToggle(checked = checked, enabled = enabled, onCheckedChange = { onToggle(app) }) },
                     )
                 }

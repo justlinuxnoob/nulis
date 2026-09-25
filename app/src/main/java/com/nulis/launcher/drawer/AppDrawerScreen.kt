@@ -76,8 +76,8 @@ import com.nulis.launcher.R
 import com.nulis.launcher.apps.AppCategory
 import com.nulis.launcher.apps.AppInfo
 import com.nulis.launcher.apps.Categories
-import com.nulis.launcher.blocks.screentime.formatMinutes
 import com.nulis.launcher.blocks.writing.WritingState
+import com.nulis.launcher.blocks.screentime.formatMinutes
 import com.nulis.launcher.icons.AppGlyph
 import com.nulis.launcher.icons.IconStyle
 import com.nulis.launcher.icons.LocalIconLoader
@@ -311,8 +311,18 @@ fun AppDrawerScreen(
                     }
                     Column {
                         Text(app.label, style = NulisTheme.type.displayM, color = colors.onBackground, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Spacer(Modifier.height(4.dp))
-                        Caption(if (app.isWork) "${app.packageName} · Work" else app.packageName)
+                        // What somebody can use: whether it is the work copy, and how long it has had
+                        // today. The package name was a developer's answer to a question nobody
+                        // holding a phone asks; App info still shows it.
+                        val minutes = usageMinutes?.get(app.packageName)
+                        val facts = listOfNotNull(
+                            "Work profile".takeIf { app.isWork },
+                            minutes?.takeIf { it > 0 }?.let { formatMinutes(it) + " today" },
+                        )
+                        if (facts.isNotEmpty()) {
+                            Spacer(Modifier.height(4.dp))
+                            Caption(facts.joinToString(" · "))
+                        }
                     }
                 }
                 Spacer(Modifier.height(16.dp))
@@ -710,3 +720,4 @@ private fun SearchPill(
         }
     }
 }
+

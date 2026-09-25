@@ -199,7 +199,12 @@ fun SettingsScreen(
     // Which of the seven screens is open, or null for the index.
     var openSection by remember { mutableStateOf<SettingsSection?>(null) }
     // A drawer search result names a setting; open the screen it lives on and scroll to it there.
-    LaunchedEffect(scrollTo) { scrollTo?.let { openSection = it.section } }
+    LaunchedEffect(scrollTo) {
+        scrollTo?.let { target ->
+            // Backup is one screen with nothing in front of it, so its search result goes there.
+            if (target.section == SettingsSection.BACKUP) actions.onBackup() else openSection = target.section
+        }
+    }
     BackHandler(
         enabled = pickerTrigger == null && appPickerTrigger == null && !hiddenAppsOpen && !licensesOpen && !categoriesOpen && openSection == null,
         onBack = onClose,
@@ -236,7 +241,9 @@ fun SettingsScreen(
                     ListRow(
                         title = entry.title,
                         subtitle = entry.summary,
-                        onClick = { openSection = entry },
+                        // Backup's own screen already explains itself; a section holding one row
+                        // that leads to it was a tap spent on nothing.
+                        onClick = { if (entry == SettingsSection.BACKUP) actions.onBackup() else openSection = entry },
                         divider = index != SettingsSection.entries.lastIndex,
                     )
                 }

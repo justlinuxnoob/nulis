@@ -96,6 +96,13 @@ android {
     }
 }
 
+// The screenshot tours launch the whole launcher, and DataStore keeps its state per process: one
+// tour finishing onboarding would otherwise start the next one past it. A fresh JVM per test
+// class keeps every tour on a phone of its own.
+tasks.withType<Test>().configureEach {
+    if (name == "testDebugUnitTest") forkEvery = 1
+}
+
 kotlin {
     compilerOptions {
         jvmTarget.set(JvmTarget.JVM_17)

@@ -8,7 +8,7 @@
     <string name="picker_label">Choose apps</string>
     <string name="picker_done">Done</string>
 
-    <string name="drawer_search_hint">Search apps, notes, sums</string>
+    <string name="drawer_search_hint">Search apps, notes, settings</string>
     <string name="drawer_recent">Recent</string>
     <string name="drawer_work">Work</string>
     <string name="drawer_hit_task">Task</string>

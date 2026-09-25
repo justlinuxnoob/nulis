@@ -4,7 +4,9 @@ package com.nulis.launcher.blocks
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.layout.Placeable
+import androidx.compose.ui.layout.Layout
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -177,36 +179,52 @@ fun BlockCaptionRow(
     trailing: String? = null,
 ) {
     val align = LocalBlockAlign.current
-    BoxWithConstraints(modifier.fillMaxWidth()) {
+    // A plain layout rather than BoxWithConstraints: a subcomposition cannot say how wide its
+    // content wants to be, and BlockFrame asks exactly that of every block to keep words whole.
+    Layout(
+        modifier = modifier.fillMaxWidth(),
+        content = {
+            com.nulis.launcher.ui.components.Caption(label)
+            if (trailing != null) com.nulis.launcher.ui.components.Caption(trailing)
+        },
+    ) { measurables, constraints ->
+        val gap = 10.dp.roundToPx()
+        val loose = constraints.copy(minWidth = 0, minHeight = 0)
+        val labelPlaceable = measurables[0].measure(loose)
         // A third of a row has no business carrying a legend and a readout both: at that width
         // one of them is going to be cut, and the reading is the half worth keeping.
-        val showTrailing = trailing != null && maxWidth >= CompactBlockWidth
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = align.arrangement,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
+        // With no width to go on (a block asking how narrow it can be) the readout is what would
+        // be dropped, so it asks for nothing.
+        val showTrailing = measurables.size > 1 &&
+            constraints.hasBoundedWidth && constraints.maxWidth >= CompactBlockWidth.roundToPx()
+        val trailingPlaceable = if (showTrailing) {
+            val left = if (constraints.hasBoundedWidth) (constraints.maxWidth - labelPlaceable.width - gap).coerceAtLeast(0) else Constraints.Infinity
+            measurables[1].measure(loose.copy(maxWidth = left))
+        } else {
+            null
+        }
+        val trailingWidth = trailingPlaceable?.let { it.width + gap } ?: 0
+        val natural = labelPlaceable.width + trailingWidth
+        val width = if (constraints.hasBoundedWidth) constraints.maxWidth else natural
+        val height = maxOf(labelPlaceable.height, trailingPlaceable?.height ?: 0)
+        layout(width, height) {
+            fun y(p: Placeable) = (height - p.height) / 2
             when (align) {
+                // Left-aligned the two spread to both edges like a panel legend.
                 BlockAlign.LEFT -> {
-                    com.nulis.launcher.ui.components.Caption(label)
-                    Spacer(Modifier.weight(1f))
-                    // The padding rather than the spacer is what guarantees the gap: on a narrow
-                    // block the weighted spacer collapses to nothing and the two words touch.
-                    if (showTrailing) {
-                        com.nulis.launcher.ui.components.Caption(trailing!!, modifier = Modifier.padding(start = 10.dp))
-                    }
+                    labelPlaceable.placeRelative(0, y(labelPlaceable))
+                    trailingPlaceable?.let { it.placeRelative(width - it.width, y(it)) }
                 }
+                // Centred or right-aligned they sit together against that edge, because a legend
+                // pinned to the far side of a right-aligned block reads as a mistake.
                 BlockAlign.RIGHT -> {
-                    if (showTrailing) {
-                        com.nulis.launcher.ui.components.Caption(trailing!!, modifier = Modifier.padding(end = 10.dp))
-                    }
-                    com.nulis.launcher.ui.components.Caption(label)
+                    labelPlaceable.placeRelative(width - labelPlaceable.width, y(labelPlaceable))
+                    trailingPlaceable?.let { it.placeRelative(width - labelPlaceable.width - gap - it.width, y(it)) }
                 }
                 BlockAlign.CENTER -> {
-                    com.nulis.launcher.ui.components.Caption(label)
-                    if (showTrailing) {
-                        com.nulis.launcher.ui.components.Caption(trailing!!, modifier = Modifier.padding(start = 10.dp))
-                    }
+                    val start = (width - natural) / 2
+                    labelPlaceable.placeRelative(start, y(labelPlaceable))
+                    trailingPlaceable?.let { it.placeRelative(start + labelPlaceable.width + gap, y(it)) }
                 }
             }
         }
