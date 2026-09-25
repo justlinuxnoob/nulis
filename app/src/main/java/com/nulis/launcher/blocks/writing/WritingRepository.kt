@@ -37,6 +37,7 @@ class WritingRepository(context: Context) {
                 notes = decode<List<Note>>(prefs[KEY_NOTES]).sortedWith(compareByDescending<Note> { it.pinned }.thenByDescending { it.updatedAt }),
                 journal = decode<List<JournalEntry>>(prefs[KEY_JOURNAL]).sortedByDescending { it.createdAt },
                 tasks = decode<List<Task>>(prefs[KEY_TASKS]).sortedWith(compareBy<Task> { it.done }.thenBy { it.createdAt }),
+                habits = decodeHabits(prefs[KEY_HABITS]),
             )
         }
 
@@ -54,12 +55,34 @@ class WritingRepository(context: Context) {
         prefs[KEY_TASKS] = json.encodeToString(transform(decode(prefs[KEY_TASKS])))
     }
 
-    /** Replaces all three lists at once. Used by restore and by "Reset Nulis". */
-    suspend fun replaceAll(notes: List<Note>, journal: List<JournalEntry>, tasks: List<Task>) {
+    suspend fun editHabits(transform: (Habits) -> Habits) = dataStore.edit { prefs ->
+        prefs[KEY_HABITS] = json.encodeToString(transform(decodeHabits(prefs[KEY_HABITS])))
+    }
+
+    /**
+     * Replaces everything at once. Used by restore and by "Reset Nulis". [habits] is null for a
+     * backup written before habits existed, and then the ones on the phone are left alone:
+     * restoring an old file is not a reason to lose a streak that file never knew about.
+     */
+    suspend fun replaceAll(notes: List<Note>, journal: List<JournalEntry>, tasks: List<Task>, habits: Habits? = Habits()) {
         dataStore.edit { prefs ->
             prefs[KEY_NOTES] = json.encodeToString(notes)
             prefs[KEY_JOURNAL] = json.encodeToString(journal)
             prefs[KEY_TASKS] = json.encodeToString(tasks)
+            if (habits != null) prefs[KEY_HABITS] = json.encodeToString(habits)
+        }
+    }
+
+    private fun decodeHabits(raw: String?): Habits {
+        if (raw == null) return Habits()
+        return try {
+            json.decodeFromString<Habits>(raw)
+        } catch (e: SerializationException) {
+            Log.w(TAG, "Unreadable habits, starting empty", e)
+            Habits()
+        } catch (e: IllegalArgumentException) {
+            Log.w(TAG, "Invalid habits, starting empty", e)
+            Habits()
         }
     }
 
@@ -81,5 +104,6 @@ class WritingRepository(context: Context) {
         val KEY_NOTES = stringPreferencesKey("notes")
         val KEY_JOURNAL = stringPreferencesKey("journal")
         val KEY_TASKS = stringPreferencesKey("tasks")
+        val KEY_HABITS = stringPreferencesKey("habits")
     }
 }

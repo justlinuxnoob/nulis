@@ -13,6 +13,8 @@ import com.nulis.launcher.blocks.screentime.AppUsage
 import com.nulis.launcher.blocks.screentime.ScreenTimeState
 import com.nulis.launcher.blocks.steps.DayCount
 import com.nulis.launcher.blocks.steps.StepsState
+import com.nulis.launcher.blocks.writing.Habit
+import com.nulis.launcher.blocks.writing.Habits
 import com.nulis.launcher.blocks.writing.JournalEntry
 import com.nulis.launcher.blocks.writing.Note
 import com.nulis.launcher.blocks.writing.Task
@@ -39,6 +41,16 @@ object DemoData {
         homeApps = homeApps,
         onLaunchApp = { _, _ -> },
     )
+
+    private fun demoHabits(): Habits {
+        val habits = listOf(Habit("h1", "Read", millis), Habit("h2", "Walk", millis), Habit("h3", "Stretch", millis))
+        val today = now.toLocalDate()
+        fun days(vararg back: Long) = back.map { today.minusDays(it).toString() }
+        return Habits(
+            habits = habits,
+            done = mapOf("h1" to days(0, 1, 2, 3, 4, 6), "h2" to days(1, 2, 5), "h3" to days(0, 2, 3)),
+        )
+    }
 
     private fun pkg(label: String) = apps.first { it.label == label }.packageName
 
@@ -70,6 +82,7 @@ object DemoData {
                 Task("t2", "Return library books", createdAt = millis),
                 Task("t3", "Water the plants", done = true, createdAt = millis),
             ),
+            habits = demoHabits(),
         ),
         screenTime = ScreenTimeState(
             granted = true,

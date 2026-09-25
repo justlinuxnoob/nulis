@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -28,41 +29,47 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.zIndex
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInParent
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.nulis.launcher.R
 import com.nulis.launcher.apps.AppCustomization
 import com.nulis.launcher.apps.AppInfo
+import com.nulis.launcher.apps.Categories
 import com.nulis.launcher.blocks.BlockContext
-import com.nulis.launcher.blocks.sampleApp
 import com.nulis.launcher.blocks.BlockRegistry
 import com.nulis.launcher.blocks.PageLayout
-import com.nulis.launcher.apps.Categories
 import com.nulis.launcher.blocks.clock.ClockBlockDefinition
+import com.nulis.launcher.blocks.sampleApp
 import com.nulis.launcher.drawer.CategoryDisplay
 import com.nulis.launcher.drawer.DrawerPlacement
 import com.nulis.launcher.drawer.SettingsTarget
-import com.nulis.launcher.ui.components.SegmentedPills
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.mutableStateMapOf
-import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.layout.positionInParent
+import com.nulis.launcher.gestures.GestureAction
 import com.nulis.launcher.gestures.GestureActionSheet
 import com.nulis.launcher.gestures.GestureAppPicker
-import com.nulis.launcher.gestures.GestureAction
 import com.nulis.launcher.gestures.GestureBinding
 import com.nulis.launcher.gestures.GestureSettings
 import com.nulis.launcher.gestures.GestureTrigger
@@ -72,43 +79,40 @@ import com.nulis.launcher.icons.IconMode
 import com.nulis.launcher.icons.IconPackInfo
 import com.nulis.launcher.icons.IconStyle
 import com.nulis.launcher.icons.IconStylePicker
+import com.nulis.launcher.onboarding.isDefaultLauncher
+import com.nulis.launcher.onboarding.rememberHomeRoleRequest
 import com.nulis.launcher.ui.components.Caption
 import com.nulis.launcher.ui.components.Glyph
+import com.nulis.launcher.ui.components.GlyphIcon
 import com.nulis.launcher.ui.components.ListRow
 import com.nulis.launcher.ui.components.NulisBottomSheet
 import com.nulis.launcher.ui.components.NulisCard
-import com.nulis.launcher.ui.components.NulisScreen
-import com.nulis.launcher.ui.components.PillButton
 import com.nulis.launcher.ui.components.NulisIconButton
+import com.nulis.launcher.ui.components.NulisScreen
 import com.nulis.launcher.ui.components.NulisSlider
 import com.nulis.launcher.ui.components.NulisToggle
+import com.nulis.launcher.ui.components.PillButton
 import com.nulis.launcher.ui.components.ScaledPreview
 import com.nulis.launcher.ui.components.SectionLabel
-import com.nulis.launcher.ui.components.pressFeedback
+import com.nulis.launcher.ui.components.SegmentedPills
 import com.nulis.launcher.ui.components.fadeTop
+import com.nulis.launcher.ui.components.pressFeedback
+import com.nulis.launcher.ui.theme.BlackColors
 import com.nulis.launcher.ui.theme.ColorTheme
+import com.nulis.launcher.ui.theme.LocalLook
+import com.nulis.launcher.ui.theme.LocalNulisColors
+import com.nulis.launcher.ui.theme.LocalNulisTypography
 import com.nulis.launcher.ui.theme.Look
 import com.nulis.launcher.ui.theme.Looks
 import com.nulis.launcher.ui.theme.NulisHaptics
 import com.nulis.launcher.ui.theme.NulisShapes
 import com.nulis.launcher.ui.theme.NulisSpacing
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
-import androidx.lifecycle.compose.LocalLifecycleOwner
-import com.nulis.launcher.onboarding.isDefaultLauncher
-import com.nulis.launcher.onboarding.rememberHomeRoleRequest
-import androidx.compose.ui.platform.LocalContext
-import com.nulis.launcher.ui.components.GlyphIcon
 import com.nulis.launcher.ui.theme.NulisTheme
 import com.nulis.launcher.ui.theme.NulisTypography
-import com.nulis.launcher.ui.theme.toHsl
+import com.nulis.launcher.ui.theme.Palette
+import com.nulis.launcher.ui.theme.WhiteColors
 import com.nulis.launcher.ui.theme.customColors
-import com.nulis.launcher.ui.theme.LocalLook
-import com.nulis.launcher.ui.theme.LocalNulisColors
-import com.nulis.launcher.ui.theme.LocalNulisTypography
-import androidx.compose.runtime.CompositionLocalProvider
+import com.nulis.launcher.ui.theme.toHsl
 import kotlin.math.roundToInt
 
 /** Everything the settings screen can change. Wired to the view model by the route. */
@@ -175,6 +179,8 @@ private val Swatches = listOf(
 @Composable
 fun SettingsScreen(
     preferences: UiPreferences,
+    /** The wallpaper's own palette, offered first among the palettes; null where there is none. */
+    wallpaperPalette: Palette?,
     gestures: GestureSettings,
     context: BlockContext,
     iconPacks: List<IconPackInfo>,
@@ -260,6 +266,7 @@ fun SettingsScreen(
             SettingsSectionScreen(
                 section = section,
                 preferences = preferences,
+                wallpaperPalette = wallpaperPalette,
                 gestures = gestures,
                 context = context,
                 iconPacks = iconPacks,
@@ -380,6 +387,7 @@ private fun HomeRoleRow() {
 private fun SettingsSectionScreen(
     section: SettingsSection,
     preferences: UiPreferences,
+    wallpaperPalette: Palette?,
     gestures: GestureSettings,
     context: BlockContext,
     iconPacks: List<IconPackInfo>,
@@ -482,7 +490,12 @@ private fun SettingsSectionScreen(
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                             ColorThemeCard(stringResource(R.string.theme_black), ColorTheme.BLACK, preferences, actions, Modifier.weight(1f))
                             ColorThemeCard(stringResource(R.string.theme_white), ColorTheme.WHITE, preferences, actions, Modifier.weight(1f))
+                            ColorThemeCard(stringResource(R.string.theme_auto), ColorTheme.AUTO, preferences, actions, Modifier.weight(1f))
                             ColorThemeCard(stringResource(R.string.theme_custom), ColorTheme.CUSTOM, preferences, actions, Modifier.weight(1f))
+                        }
+                        if (preferences.colorTheme == ColorTheme.AUTO) {
+                            Spacer(Modifier.height(8.dp))
+                            Caption(stringResource(R.string.theme_auto_hint), lines = 2)
                         }
                         if (preferences.colorTheme == ColorTheme.CUSTOM) {
                             Spacer(Modifier.height(16.dp))
@@ -504,8 +517,9 @@ private fun SettingsSectionScreen(
                         PaletteRow(
                             home = homeLayout,
                             context = context,
-                            current = paletteOf(preferences),
+                            current = paletteOf(preferences, wallpaperPalette),
                             onApply = actions.onPalette,
+                            wallpaper = wallpaperPalette,
                         )
                         Spacer(Modifier.height(24.dp))
                         AccentRow(current = preferences.customAccent, onPick = actions.onAccent)
@@ -847,16 +861,36 @@ private fun ColorThemeCard(label: String, theme: ColorTheme, preferences: UiPref
             contentPadding = 12.dp,
             onClick = { if (!selected) haptics.performHapticFeedback(NulisHaptics.tick); actions.onTheme(theme) },
         ) {
-            Box(
-                Modifier
-                    .fillMaxWidth()
-                    .height(56.dp)
-                    .background(preview.background, NulisShapes.tile)
-                    .border(1.dp, preview.hairline, NulisShapes.tile),
-                contentAlignment = Alignment.Center,
-            ) {
-                CompositionLocalProvider(LocalNulisColors provides preview) {
-                    Text("Aa", style = NulisTheme.type.displayS, color = preview.onBackground)
+            if (theme == ColorTheme.AUTO) {
+                // Half of each, because it is either, depending on the phone.
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .height(56.dp)
+                        .clip(NulisShapes.tile)
+                        .border(1.dp, NulisTheme.colors.hairline, NulisShapes.tile),
+                ) {
+                    listOf(BlackColors to "A", WhiteColors to "a").forEachIndexed { index, (half, letter) ->
+                        Box(
+                            Modifier.weight(1f).fillMaxHeight().background(half.background),
+                            contentAlignment = if (index == 0) Alignment.CenterEnd else Alignment.CenterStart,
+                        ) {
+                            Text(letter, style = NulisTheme.type.displayS, color = half.onBackground)
+                        }
+                    }
+                }
+            } else {
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .height(56.dp)
+                        .background(preview.background, NulisShapes.tile)
+                        .border(1.dp, preview.hairline, NulisShapes.tile),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    CompositionLocalProvider(LocalNulisColors provides preview) {
+                        Text("Aa", style = NulisTheme.type.displayS, color = preview.onBackground)
+                    }
                 }
             }
         }

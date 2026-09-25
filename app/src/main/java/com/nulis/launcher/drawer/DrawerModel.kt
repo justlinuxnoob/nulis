@@ -24,7 +24,7 @@ enum class SettingsTarget(val title: String, val keywords: List<String>) {
     // stays as a keyword pointing at the two halves it used to mean.
     ARRANGEMENT("Arrangement", listOf("layout", "arrangement", "preset", "setup", "save", "theme", "gallery")),
     LOOK("Look", listOf("look", "dot", "clean", "matrix")),
-    BACKGROUND("Background", listOf("background", "colour", "color", "black", "white", "custom", "ink", "dark", "light")),
+    BACKGROUND("Background", listOf("background", "colour", "color", "black", "white", "custom", "ink", "dark", "light", "auto", "dark mode", "night")),
     TYPE("Type", listOf("type", "font", "typeface", "serif", "mono", "text size", "uppercase", "licence", "license")),
     APP_ICONS("App icons", listOf("icon", "pack", "shape", "monogram", "grayscale")),
     CATEGORIES("Categories", listOf("category", "categories", "folder", "folders", "group", "groups")),

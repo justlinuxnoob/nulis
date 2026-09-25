@@ -10,7 +10,14 @@ import kotlinx.serialization.Serializable
 
 /** BLACK and WHITE are the two pure presets; CUSTOM builds every role from one user-chosen background. */
 @Serializable
-enum class ColorTheme { BLACK, WHITE, CUSTOM }
+enum class ColorTheme {
+    BLACK,
+    WHITE,
+    CUSTOM,
+
+    /** Black while the phone is in dark mode, white while it is not. */
+    AUTO,
+}
 
 /**
  * Color tokens. Both themes are built from the same roles so every component works in either.
@@ -74,10 +81,13 @@ fun colorsFor(
     customInk: Color? = null,
     /** The user's own accent, or null for the one the theme ships with. */
     customAccent: Color? = null,
+    /** Whether the phone is in dark mode right now; only [ColorTheme.AUTO] asks. */
+    systemDark: Boolean = true,
 ): NulisColors {
     val base = when (theme) {
         ColorTheme.BLACK -> BlackColors
         ColorTheme.WHITE -> WhiteColors
+        ColorTheme.AUTO -> if (systemDark) BlackColors else WhiteColors
         ColorTheme.CUSTOM -> customColors(customBackground, customInk)
     }
     if (customAccent == null) return base

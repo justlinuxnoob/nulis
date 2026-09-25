@@ -809,9 +809,14 @@ fun LauncherRoute(
             modifier = Modifier.zIndex(FullScreenZ),
         ) {
             // Looking for installed packs touches the package manager; only do it when asked.
-            LaunchedEffect(Unit) { viewModel.refreshIconPacks() }
+            LaunchedEffect(Unit) {
+                viewModel.refreshIconPacks()
+                viewModel.refreshWallpaperPalette()
+            }
+            val wallpaperPalette by viewModel.wallpaperPalette.collectAsStateWithLifecycle()
             SettingsScreen(
                 preferences = preferences,
+                wallpaperPalette = wallpaperPalette,
                 gestures = gestures,
                 context = blockContext,
                 iconPacks = iconPacks,

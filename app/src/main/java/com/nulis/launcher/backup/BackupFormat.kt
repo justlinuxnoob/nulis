@@ -5,6 +5,7 @@ package com.nulis.launcher.backup
 import com.nulis.launcher.apps.AppCategory
 import com.nulis.launcher.blocks.PageLayout
 import com.nulis.launcher.blocks.focus.FocusSession
+import com.nulis.launcher.blocks.writing.Habits
 import com.nulis.launcher.blocks.writing.JournalEntry
 import com.nulis.launcher.blocks.writing.Note
 import com.nulis.launcher.blocks.writing.Task
@@ -56,6 +57,8 @@ data class NulisBackup(
     val notes: List<Note> = emptyList(),
     val journal: List<JournalEntry> = emptyList(),
     val tasks: List<Task> = emptyList(),
+    /** Absent from a file written before habits existed; restoring one leaves them alone. */
+    val habits: Habits? = null,
     val wellbeing: BackupWellbeing? = null,
     val focusSessions: List<FocusSession> = emptyList(),
     val focusMinutes: Int = 25,
@@ -126,6 +129,8 @@ data class BackupPreview(
     val notes: Int,
     val journal: Int,
     val tasks: Int,
+    /** Null for a file written before habits existed. */
+    val habits: Int? = null,
     val focusSessions: Int,
     val hasPreferences: Boolean,
     val hasWellbeing: Boolean,
@@ -144,6 +149,7 @@ fun NulisBackup.preview(): BackupPreview = BackupPreview(
     notes = notes.size,
     journal = journal.size,
     tasks = tasks.size,
+    habits = habits?.habits?.size,
     focusSessions = focusSessions.size,
     hasPreferences = preferences != null,
     hasWellbeing = wellbeing != null,
@@ -195,7 +201,7 @@ fun parseBackup(text: String?): BackupResult {
     if (backup.format > NulisBackup.FORMAT) return BackupResult.Failed(BackupError.TooNew(backup.format))
     val preview = backup.preview()
     val nothing = preview.pages == 0 && preview.setups == 0 && preview.notes == 0 &&
-        preview.journal == 0 && preview.tasks == 0 && preview.categories == 0 &&
+        preview.journal == 0 && preview.tasks == 0 && (preview.habits ?: 0) == 0 && preview.categories == 0 &&
         !preview.hasPreferences && preview.gestures == 0
     if (nothing) return BackupResult.Failed(BackupError.Empty)
     return BackupResult.Ok(backup)

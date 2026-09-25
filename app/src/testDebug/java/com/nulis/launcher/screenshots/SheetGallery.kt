@@ -90,7 +90,7 @@ class SheetGallery(private val lookId: String, private val theme: ColorTheme) : 
                     BlockOptionsSheet(block, definition, layout, DemoData.context, NoActions, onDismiss = {})
                 }
             }
-            listOf("notes", "journal", "tasks", "focus", "screentime", "steps", "calculator", "week").forEach { type ->
+            listOf("habits", "notes", "journal", "tasks", "focus", "screentime", "steps", "calculator", "week").forEach { type ->
                 val definition = BlockRegistry.definition(type) ?: return@forEach
                 render(scenario, "screen-$type") {
                     definition.Screen(ScreenRequest(type), DemoData.context, onClose = {})

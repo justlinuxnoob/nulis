@@ -85,7 +85,7 @@ fun BackupScreen(
             Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
                 Text(
                     text = "One file with your pages, blocks, themes, settings, gestures, app names, " +
-                        "categories, notes, journal, tasks and focus log in it. Plain JSON: you can open it " +
+                        "categories, notes, journal, tasks, habits and focus log in it. Plain JSON: you can open it " +
                         "and read it.",
                     style = NulisTheme.type.bodyM,
                     color = colors.secondary,
@@ -191,6 +191,7 @@ private fun PreviewSheet(preview: BackupPreview, onRestore: () -> Unit, onDismis
         Line("Notes", "${preview.notes}", preview.notes > 0)
         Line("Journal entries", "${preview.journal}", preview.journal > 0)
         Line("Tasks", "${preview.tasks}", preview.tasks > 0)
+        preview.habits?.let { Line("Habits", "$it", it > 0) }
         Line("Focus sessions", "${preview.focusSessions}", preview.focusSessions > 0)
         Spacer(Modifier.height(12.dp))
         Caption("Anything not in the file is left exactly as it is now", lines = 2)

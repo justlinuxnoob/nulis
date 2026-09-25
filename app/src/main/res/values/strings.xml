@@ -88,6 +88,8 @@
     <string name="theme_black">Black</string>
     <string name="theme_white">White</string>
     <string name="theme_custom">Custom</string>
+    <string name="theme_auto">Auto</string>
+    <string name="theme_auto_hint">Black while the phone is in dark mode, white while it is not</string>
 
     <string name="settings_label">Settings</string>
     <string name="settings_title">Nulis</string>

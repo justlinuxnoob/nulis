@@ -105,8 +105,13 @@ data class UiPreferences(
     val reducedMotion: Boolean = false,
     /** Captions, secondary text and hairlines turned up to WCAG body-text contrast. */
     val highContrast: Boolean = false,
+    /**
+     * Whether the phone is in dark mode. Not stored: it is the phone's, and it is filled in by
+     * the activity, so a background set to follow the phone knows which way to go.
+     */
+    val systemDark: Boolean = true,
 ) {
-    val colors: NulisColors get() = colorsFor(colorTheme, Color(customBackground), customInk?.let { Color(it) }, customAccent?.let { Color(it) })
+    val colors: NulisColors get() = colorsFor(colorTheme, Color(customBackground), customInk?.let { Color(it) }, customAccent?.let { Color(it) }, systemDark)
         .let { if (highContrast) it.withHigherContrast() else it }
     val displayFont: NulisFont? get() = Fonts.byId(displayFontId)
     val bodyFont: NulisFont? get() = Fonts.byId(bodyFontId)
