@@ -22,7 +22,7 @@ import org.junit.Rule
  * The base of every screenshot test: a demo phone, the real launcher, and a way to save what is
  * on screen.
  *
- * Images are only written when Roborazzi is asked to record (`./gradlew recordRoborazziDebug`);
+ * Images are only written when Roborazzi is asked to record (`./gradlew recordRoborazziPlayDebug`);
  * an ordinary test run still drives every screen, so a crash in one fails the build either way.
  * They land in `app/build/screenshots/<group>/`.
  *

@@ -1,0 +1,1 @@
+First release. A home screen made of blocks: edit the real page, 27 kinds of block, two looks, habits, screen time, widgets, and no internet permission at all.

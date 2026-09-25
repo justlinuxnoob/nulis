@@ -78,6 +78,7 @@ object DemoPhone {
 
     /** Installs every demo app into Robolectric's package manager, icons included. */
     fun install(context: Context = ApplicationProvider.getApplicationContext()) {
+        warmNativeGraphics()
         val pm = shadowOf(context.packageManager)
         apps.forEach { app ->
             val activity = "${app.packageName}.Main"
@@ -117,6 +118,29 @@ object DemoPhone {
             pm.setApplicationIcon(app.packageName, icon)
             pm.addActivityIcon(component, icon)
         }
+    }
+
+    /**
+     * Touches every native graphics path the icon loader uses - encode, decode, pixel copies -
+     * on the test's own thread before any background thread does.
+     *
+     * Robolectric's native graphics look their JNI classes up the first time each path is used,
+     * and when that first time is on one of the icon loader's worker threads the lookup can fail
+     * ("Class not found: java/nio/FloatBuffer") and abort the whole JVM. On a phone none of this
+     * applies; here it made a tour pass or crash depending on which thread got there first.
+     */
+    private fun warmNativeGraphics() {
+        val bitmap = Bitmap.createBitmap(8, 8, Bitmap.Config.ARGB_8888)
+        Canvas(bitmap).drawColor(0xFF808080.toInt())
+        val pixels = IntArray(64)
+        bitmap.getPixels(pixels, 0, 8, 0, 0, 8, 8)
+        Bitmap.createBitmap(pixels, 8, 8, Bitmap.Config.ARGB_8888)
+        val bytes = java.io.ByteArrayOutputStream().also { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }.toByteArray()
+        android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+        val file = java.io.File.createTempFile("warm", ".png").apply { writeBytes(bytes); deleteOnExit() }
+        android.graphics.BitmapFactory.decodeFile(file.path)
+        java.nio.ByteBuffer.allocateDirect(256).asFloatBuffer()
+        bitmap.copyPixelsToBuffer(java.nio.ByteBuffer.allocate(256))
     }
 
     /** A full-bleed square, the way most modern icons arrive: colour to the edges, a mark in the middle. */

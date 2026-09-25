@@ -32,7 +32,7 @@ Everything Nulis knows lives in its own private app storage, which no other app 
 | What | Where |
 |---|---|
 | Your pages, blocks and their settings | DataStore, one file per page |
-| Notes, journal entries and tasks | DataStore |
+| Notes, journal entries, tasks and habits | DataStore |
 | Look, colours, fonts, gestures, icon style, saved setups | DataStore |
 | App categories, hidden apps, favourites | DataStore |
 | Focus sessions, mindful-pause settings, the weekly summary | DataStore |
@@ -44,9 +44,10 @@ There is no hidden file, no database outside the sandbox and no log file written
 
 ## Permissions
 
-Five permissions are declared. Four are optional: Nulis asks for each one only when you turn on
-the feature that needs it, behind a screen that explains what it is for, and everything else keeps
-working if you decline.
+Four permissions are declared, plus notification access, which is not a permission in the
+manifest but a special access you grant in system settings. All but one are optional: Nulis asks
+for each one only when you turn on the feature that needs it, behind a screen that explains what
+it is for, and everything else keeps working if you decline.
 
 **`PACKAGE_USAGE_STATS`** — the screen-time block, resting apps you have not opened in a while, and
 the optional recents row in the drawer. This is a special permission that only you can grant, by
@@ -95,6 +96,15 @@ read grant for that single file and nothing else. It cannot browse your gallery.
 artist and the transport controls it advertises. Any player on the phone publishes this to the
 system; Nulis is a reader like any lock screen.
 
+**Your wallpaper's palette.** Android works out a wallpaper's main colours for any app that asks,
+and Nulis asks when you open Settings, to offer a palette in those colours. It receives two or
+three colour values, never the image, and needs no permission to do it. Nothing is stored unless
+you apply the palette, and then only as the colours themselves.
+
+**Links in About.** "Source code on GitHub" (and, in the GitHub build only, "Buy me a coffee")
+ask Android to open a web page in your browser, the way a link in a message does. The browser
+makes that connection, not Nulis, which still has no internet permission.
+
 **Icon packs.** If you install an icon pack, Nulis reads the `appfilter.xml` it ships. No
 permission is involved and nothing is sent back to the pack.
 
@@ -123,4 +133,4 @@ If this ever changes, it changes in this file, in the repository's history, wher
 diff. Any future version that added a network permission would be a different app and should be
 treated as one.
 
-*Last reviewed for version 0.1.0.*
+*Last reviewed for version 1.0.0.*

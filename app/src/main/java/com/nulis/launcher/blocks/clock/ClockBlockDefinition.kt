@@ -79,14 +79,23 @@ import androidx.compose.foundation.layout.Arrangement
 /** Current time, updated on every minute boundary and whenever [refreshKey] changes. */
 @Composable
 fun rememberCurrentTime(refreshKey: Any?): LocalDateTime {
-    val time by produceState(initialValue = LocalDateTime.now(), key1 = refreshKey) {
+    val time by produceState(initialValue = NulisClock.now(), key1 = refreshKey) {
         while (true) {
-            value = LocalDateTime.now()
+            value = NulisClock.now()
             val untilNextMinute = 60_000L - (System.currentTimeMillis() % 60_000L)
             delay(untilNextMinute + 20L)
         }
     }
     return time
+}
+
+/**
+ * Where the page's "now" comes from. The phone's clock, always - except in the screenshot tests
+ * that make the store listing, where every phone in every picture says 9:41.
+ */
+object NulisClock {
+    @Volatile
+    var now: () -> LocalDateTime = { LocalDateTime.now() }
 }
 
 /**
