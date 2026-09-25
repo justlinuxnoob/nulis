@@ -125,6 +125,7 @@ class LauncherViewModel(
     private val appUsageRepository: AppUsageRepository,
     private val wellbeingRepository: WellbeingRepository,
     private val backupRepository: BackupRepository,
+    private val wallpaperColorsRepository: com.nulis.launcher.settings.WallpaperColorsRepository,
 ) : ViewModel(), WritingActions, StepsActions, MusicActions, CalendarActions, FocusActions, PageActions {
 
     // ---------------------------------------------------------------- backup
@@ -501,6 +502,12 @@ class LauncherViewModel(
         viewModelScope.launch { uiPreferencesRepository.setEditCoachSeen(true) }
     }
 
+    /** Somebody just did what [hint] describes; it is never shown again. */
+    fun learnHint(hint: com.nulis.launcher.home.Hint) {
+        if (hint.key in uiPreferences.value.learnedHints) return
+        viewModelScope.launch { uiPreferencesRepository.learnHint(hint.key) }
+    }
+
     /**
      * Applies a whole setup during onboarding: the appearance and a finished set of pages, with
      * whatever apps have already been picked carried over.
@@ -517,6 +524,10 @@ class LauncherViewModel(
 
     fun setReducedMotion(on: Boolean) {
         viewModelScope.launch { uiPreferencesRepository.setReducedMotion(on) }
+    }
+
+    fun setHighContrast(on: Boolean) {
+        viewModelScope.launch { uiPreferencesRepository.setHighContrast(on) }
     }
 
     fun setCustomAccent(argb: Int?) {
@@ -567,6 +578,16 @@ class LauncherViewModel(
 
     fun refreshIconPacks() {
         viewModelScope.launch { _iconPacks.value = iconLoader.installedPacks() }
+    }
+
+    private val _wallpaperPalette = MutableStateFlow<com.nulis.launcher.ui.theme.Palette?>(null)
+
+    /** A palette in the wallpaper's own colours, or null where the phone cannot say what they are. */
+    val wallpaperPalette: StateFlow<com.nulis.launcher.ui.theme.Palette?> = _wallpaperPalette.asStateFlow()
+
+    /** Asked when Settings opens: the wallpaper may have changed since. */
+    fun refreshWallpaperPalette() {
+        viewModelScope.launch { _wallpaperPalette.value = wallpaperColorsRepository.palette() }
     }
 
     fun setDrawerIcons(style: IconStyle) {
@@ -781,8 +802,16 @@ class LauncherViewModel(
         .map { it != null }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
+    private val systemDark = MutableStateFlow(initialPreferences.systemDark)
+
     val uiPreferences: StateFlow<UiPreferences> = uiPreferencesRepository.preferences
+        .combine(systemDark) { preferences, dark -> preferences.copy(systemDark = dark) }
         .stateIn(viewModelScope, SharingStarted.Eagerly, initialPreferences)
+
+    /** The phone switched between light and dark; a background set to follow it follows. */
+    fun setSystemDark(dark: Boolean) {
+        systemDark.value = dark
+    }
 
     val battery: StateFlow<BatteryState> = batteryRepository.state
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), BatteryState())
@@ -928,6 +957,34 @@ class LauncherViewModel(
         viewModelScope.launch { writingRepository.editTasks { tasks -> tasks.filterNot { it.done } } }
     }
 
+    override fun toggleHabit(habitId: String, date: java.time.LocalDate) {
+        viewModelScope.launch { writingRepository.editHabits { it.toggle(habitId, date) } }
+    }
+
+    override fun addHabit(name: String) {
+        val trimmed = name.trim()
+        if (trimmed.isEmpty()) return
+        viewModelScope.launch {
+            writingRepository.editHabits { habits ->
+                if (habits.habits.size >= com.nulis.launcher.blocks.writing.Habits.MaxHabits) {
+                    habits
+                } else {
+                    habits.add(com.nulis.launcher.blocks.writing.Habit(writingRepository.newId(), trimmed, System.currentTimeMillis()))
+                }
+            }
+        }
+    }
+
+    override fun renameHabit(habitId: String, name: String) {
+        val trimmed = name.trim()
+        if (trimmed.isEmpty()) return
+        viewModelScope.launch { writingRepository.editHabits { it.rename(habitId, trimmed) } }
+    }
+
+    override fun deleteHabit(habitId: String) {
+        viewModelScope.launch { writingRepository.editHabits { it.delete(habitId) } }
+    }
+
     private fun edit(pageId: String, transform: (PageLayout) -> PageLayout) {
         viewModelScope.launch {
             layoutRepository.update(pageId, transform)
@@ -972,6 +1029,7 @@ class LauncherViewModel(
             appUsageRepository: AppUsageRepository,
             wellbeingRepository: WellbeingRepository,
             backupRepository: BackupRepository,
+            wallpaperColorsRepository: com.nulis.launcher.settings.WallpaperColorsRepository,
         ): ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 LauncherViewModel(
@@ -980,6 +1038,7 @@ class LauncherViewModel(
                     screenTimeRepository, stepsRepository, musicRepository, gesturesRepository,
                     setupRepository, calendarRepository, focusRepository,
                     categoryRepository, appUsageRepository, wellbeingRepository, backupRepository,
+                    wallpaperColorsRepository,
                 )
             }
         }

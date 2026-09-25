@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.interaction.collectIsDraggedAsState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
@@ -47,6 +48,7 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.lerp
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.zIndex
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
@@ -87,6 +89,9 @@ import com.nulis.launcher.icons.LocalIconLoader
 import com.nulis.launcher.icons.MaxIconPx
 import com.nulis.launcher.home.BlockOptionsSheet
 import com.nulis.launcher.home.HomeScreen
+import com.nulis.launcher.home.Hint
+import com.nulis.launcher.home.HomeHint
+import com.nulis.launcher.home.nextHomeHint
 import com.nulis.launcher.home.NoRoomSheet
 import com.nulis.launcher.home.PageEditor
 import com.nulis.launcher.home.PageOptionsSheet
@@ -116,9 +121,11 @@ import com.nulis.launcher.ui.theme.NulisHaptics
 import com.nulis.launcher.ui.theme.LineStyle
 import com.nulis.launcher.ui.theme.NulisMotion
 import com.nulis.launcher.widgets.LocalWidgetHost
+import com.nulis.launcher.widgets.WidgetBlockDefinition
 import com.nulis.launcher.ui.theme.ColorTheme
 import com.nulis.launcher.ui.theme.Fonts
 import com.nulis.launcher.ui.theme.Looks
+import com.nulis.launcher.ui.theme.NulisSpacing
 import com.nulis.launcher.ui.theme.NulisTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -323,6 +330,28 @@ fun LauncherRoute(
             delay(NulisMotion.quick.toLong() * 2)
             viewModel.releaseUnusedWidgetIds(widgetHost)
         }
+    }
+    // A widget's setup screen has answered: place it on the block it was chosen for, or give its
+    // id back. By block id rather than through the sheet it was chosen in, because the sheet -
+    // and after a restart, the whole process - may be gone by the time the answer comes. Waits
+    // until the pages are loaded, so a block that is on one is always found.
+    val setupOutcome = widgetHost?.setupOutcome?.collectAsStateWithLifecycle()?.value
+    LaunchedEffect(setupOutcome, layouts, pagesConfig) {
+        val outcome = setupOutcome ?: return@LaunchedEffect
+        val host = widgetHost ?: return@LaunchedEffect
+        val pending = outcome.pending
+        val pageId = viewModel.pageIdOf(pending.blockId)
+        val block = pageId?.let { layouts[it] }?.block(pending.blockId)
+        if (block == null && pagesConfig.ids.any { layouts[it] == null }) return@LaunchedEffect
+        when {
+            pending.reconfigure -> Unit
+            outcome.placed && pageId != null && block != null -> {
+                viewModel.actionsFor(pageId).update(WidgetBlockDefinition.withWidgetId(block, pending.widgetId))
+                if (pending.previousId != pending.widgetId) host.forget(pending.previousId)
+            }
+            else -> host.forget(pending.widgetId)
+        }
+        host.consume(outcome)
     }
     // And the stale id itself goes, so the editor does not spring open later if that page
     // happens to come back.
@@ -543,6 +572,8 @@ fun LauncherRoute(
                 actions = drawerActions,
                 onClose = closeDrawer,
                 modifier = drawerModifier,
+                holdHint = Hint.APP_MENU.key !in preferences.learnedHints,
+                onAppMenuOpened = { viewModel.learnHint(Hint.APP_MENU) },
             )
         }
 
@@ -552,6 +583,14 @@ fun LauncherRoute(
     val notificationDots = if (preferences.notificationDots && music.granted) liveDots else emptySet()
 
     val drawerOpen = drawer.target
+    // Each hint is learned by doing what it says, whichever way it was done.
+    LaunchedEffect(drawer.settledShown, onDrawerPage) {
+        if (drawer.settledShown || onDrawerPage) viewModel.learnHint(Hint.DRAWER)
+    }
+    LaunchedEffect(editMode) { if (editMode) viewModel.learnHint(Hint.EDIT) }
+    // A finger dragging the pager sideways, not the launcher scrolling itself to home.
+    val pagerDragged by pager.interactionSource.collectIsDraggedAsState()
+    LaunchedEffect(pagerDragged) { if (pagerDragged) viewModel.learnHint(Hint.PAGES) }
     val onHomePage = pager.currentPage == homeIndex && !pager.isScrollInProgress
     // Back on a side page returns to home; on home there is nowhere to go. Overlays register their own handlers.
     BackHandler(enabled = !drawerOpen && !editMode) { }
@@ -591,12 +630,20 @@ fun LauncherRoute(
             .outsideSystemGestures()
             .onSizeChanged { drawer.travelPx = it.height.toFloat().coerceAtLeast(1f) },
     ) {
+        // A screen reader walks every node on screen, including the ones under an opaque
+        // surface. While something covers the pages, the pages say nothing - otherwise swiping
+        // through Settings wanders off into the clock and the apps behind it. Only settled
+        // states count, so none of this happens on the drawer's way up or down.
+        val pagesCovered = !preferences.onboarded || editMode || drawer.settledShown || settingsOpen ||
+            layoutsOpen || pagesOpen || setupsOpen || backupOpen || weekOpen || wellbeingOpen ||
+            addBlockOpen || screenRequest != null || pending != null
         HorizontalPager(
             state = pager,
             userScrollEnabled = !editMode,
             beyondViewportPageCount = pageCount,
             modifier = Modifier
                 .fillMaxSize()
+                .then(if (pagesCovered) Modifier.clearAndSetSemantics { } else Modifier)
                 .graphicsLayer {
                     val p = drawer.progress
                     val scale = lerp(1f, NulisMotion.homeBehindDrawerScale, p)
@@ -656,6 +703,30 @@ fun LauncherRoute(
         }
 
         PageDots(pager, homeIndex = homeIndex, drawerIndex = drawerPageIndex, visible = true, modifier = Modifier.align(Alignment.BottomCenter))
+
+        // One quiet line along the bottom of the home page until each gesture has been used
+        // once. Everything that opens over the page covers it, so it only has to know about the
+        // page itself: home, still, and not being edited.
+        val hintLine = remember(preferences.learnedHints, drawerPlacement, gestures, pageCount, preferences.onboarded) {
+            if (!preferences.onboarded) {
+                null
+            } else {
+                nextHomeHint(
+                    learned = preferences.learnedHints,
+                    drawerPlacement = drawerPlacement,
+                    swipeUpOpensDrawer = gestures.action(GestureTrigger.SWIPE_UP).let { it == GestureAction.OPEN_DRAWER || it == GestureAction.SEARCH_APPS },
+                    longPressEdits = gestures.action(GestureTrigger.LONG_PRESS).let { it == GestureAction.NOTHING || it == GestureAction.EDIT_MODE },
+                    pageCount = pagesConfig.ids.size,
+                )
+            }
+        }
+        HomeHint(
+            line = hintLine?.takeIf { onHomePage && !editMode && !drawerOpen && resumed },
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .navigationBarsPadding()
+                .padding(start = NulisSpacing.screenMargin, end = NulisSpacing.screenMargin, bottom = 2.dp),
+        )
 
         // The editor is the page: the same blocks, the same data, one step back. It sits over
         // the pager rather than inside it so that paging, the drawer and every page gesture stop
@@ -738,9 +809,14 @@ fun LauncherRoute(
             modifier = Modifier.zIndex(FullScreenZ),
         ) {
             // Looking for installed packs touches the package manager; only do it when asked.
-            LaunchedEffect(Unit) { viewModel.refreshIconPacks() }
+            LaunchedEffect(Unit) {
+                viewModel.refreshIconPacks()
+                viewModel.refreshWallpaperPalette()
+            }
+            val wallpaperPalette by viewModel.wallpaperPalette.collectAsStateWithLifecycle()
             SettingsScreen(
                 preferences = preferences,
+                wallpaperPalette = wallpaperPalette,
                 gestures = gestures,
                 context = blockContext,
                 iconPacks = iconPacks,
@@ -778,6 +854,7 @@ fun LauncherRoute(
                         onSound = viewModel::setSound,
                         onSoundVolume = viewModel::setSoundVolume,
                         onReducedMotion = viewModel::setReducedMotion,
+                        onHighContrast = viewModel::setHighContrast,
                         onDisplayFont = viewModel::setDisplayFont,
                         onBodyFont = viewModel::setBodyFont,
                         onTextScale = viewModel::setTextScale,

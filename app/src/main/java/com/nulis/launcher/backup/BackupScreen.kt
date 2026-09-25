@@ -84,8 +84,8 @@ fun BackupScreen(
         NulisScreen(label = "Backup", title = "Everything", onBack = onClose) {
             Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
                 Text(
-                    text = "One file with your pages, blocks, themes, settings, gestures, app names, " +
-                        "categories, notes, journal, tasks and focus log in it. Plain JSON: you can open it " +
+                    text = "One file with your pages, blocks, saved setups, settings, gestures, app names, " +
+                        "categories, notes, journal, tasks, habits and focus log in it. Plain JSON: you can open it " +
                         "and read it.",
                     style = NulisTheme.type.bodyM,
                     color = colors.secondary,
@@ -131,8 +131,8 @@ fun BackupScreen(
                 Spacer(Modifier.height(16.dp))
                 SectionLabel("Start again")
                 Text(
-                    text = "Puts Nulis back the way it came: default pages, default look, no themes of " +
-                        "your own, no categories, no gestures, and none of your writing. There is no undo.",
+                    text = "Puts Nulis back the way it came: default pages, default look, no saved setups of " +
+                        "your own, no categories, no gestures, and none of your writing or habits. There is no undo.",
                     style = NulisTheme.type.bodyM,
                     color = colors.secondary,
                 )
@@ -191,6 +191,7 @@ private fun PreviewSheet(preview: BackupPreview, onRestore: () -> Unit, onDismis
         Line("Notes", "${preview.notes}", preview.notes > 0)
         Line("Journal entries", "${preview.journal}", preview.journal > 0)
         Line("Tasks", "${preview.tasks}", preview.tasks > 0)
+        preview.habits?.let { Line("Habits", "$it", it > 0) }
         Line("Focus sessions", "${preview.focusSessions}", preview.focusSessions > 0)
         Spacer(Modifier.height(12.dp))
         Caption("Anything not in the file is left exactly as it is now", lines = 2)

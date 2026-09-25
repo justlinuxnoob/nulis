@@ -93,11 +93,16 @@ fun SetupsScreen(
         Box(Modifier.fillMaxSize().background(NulisTheme.colors.background)) {
             NulisScreen(
                 label = "Saved setups",
-                title = if (setups.isEmpty()) "Nothing saved yet" else "${setups.size} saved",
+                title = if (setups.isEmpty()) "None yet" else "${setups.size} saved",
                 onBack = onClose,
                 trailing = {
-                    PillButton(text = "Save this one", onClick = { saving = true }, compact = true)
-                    Spacer(Modifier.width(8.dp))
+                    // With nothing saved, the one thing to do is the big button under the
+                    // explanation; a second, smaller copy of it up here only squeezed the title
+                    // until "Nothing" broke across two lines.
+                    if (setups.isNotEmpty()) {
+                        PillButton(text = "Save this one", onClick = { saving = true }, compact = true)
+                        Spacer(Modifier.width(8.dp))
+                    }
                     NulisIconButton(Glyph.Close, onClick = onClose, bordered = true)
                 },
             ) {
@@ -110,6 +115,13 @@ fun SetupsScreen(
                             "whenever you like.",
                         style = NulisTheme.type.bodyM,
                         color = NulisTheme.colors.secondary,
+                    )
+                    Spacer(Modifier.height(24.dp))
+                    PillButton(
+                        text = "Save this setup",
+                        tone = PillTone.Primary,
+                        onClick = { saving = true },
+                        modifier = Modifier.fillMaxWidth(),
                     )
                 } else {
                     LazyVerticalGrid(
@@ -182,6 +194,7 @@ private fun SetupCard(
         NulisCard(
             modifier = Modifier.fillMaxWidth(),
             selected = selected,
+            label = setup.name,
             shape = NulisShapes.tile,
             contentPadding = 8.dp,
             onClick = {

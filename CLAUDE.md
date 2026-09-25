@@ -16,6 +16,8 @@ A minimalist but deeply customizable Android launcher.
 - Fully offline: never add `INTERNET`, no analytics or crash reporters, all data on-device.
 - Every permission is opt-in behind an explanation screen the user can decline.
 - Risky features (e.g. Accessibility Service) go in a later `full` build flavor, never the default one.
+- Two store flavors, identical but for one thing: `play` has no tip, donation or payment link anywhere (Google Play payments policy); `github` adds "Buy me a coffee" in About. Flavor-specific code lives only in `app/src/<flavor>/.../Store.kt`; never put a payment link in `main`.
+- Release keys never enter the repository or a cloud session. `~/.nulis-release/keystore.properties` signs release builds when present; without it they build unsigned.
 - Only open-source fonts (Doto, Geist, Geist Mono; OFL licenses in `assets/licenses`). Never another company's name, logo or fonts.
 - No new dependencies or permissions without a clear need.
 
@@ -30,8 +32,10 @@ All UI is built from `ui/theme` tokens and `ui/components`. Never hardcode a fon
 
 - **Looks** (`Look.kt`): display typeface + decorative motif. `Looks.all` ships DOT (Doto, dotted hairlines, dot-grid motif on editing surfaces) and CLEAN (thin Geist, solid hairlines). A new look is one new entry. Read via `NulisTheme.look`.
 - **Fonts** (`Fonts.kt`): six bundled OFL faces with a category each. A user (or a theme) can override the display face and the body face; a mono body face takes the label styles with it.
-- **Colors** (`Colors.kt`): roles background, surface, surfaceRaised, onBackground, secondary, tertiary, hairline, accent. BLACK and WHITE share the roles; CUSTOM derives them all from one background plus an optional ink. Red accent only for selection dots and destructive actions.
+- **Colors** (`Colors.kt`): roles background, surface, surfaceRaised, onBackground, secondary, tertiary, hairline, accent. BLACK and WHITE share the roles; AUTO is one or the other by the phone's dark mode (`UiPreferences.systemDark`, never stored); CUSTOM derives them all from one background plus an optional ink, and a wallpaper palette derives one from the wallpaper's hue. Red accent only for selection dots and destructive actions.
 - **Type** (`Type.kt`): display XL/L/M/S in the Look's (or the chosen) face; body XL/L/M/S in the body face; `label`/`labelL` mono letter-spaced; `mono` for readouts. A global text scale multiplies everything. Components case labels through `type.labelCase()`, never `uppercase()`.
+- **Accessibility**: every tappable thing has a spoken name. A choice card is `NulisCard(label = ...)`; an icon-only thing has a `contentDescription`. Captions (`tertiary`) are text and stay at 3:1 or better; `withHigherContrast()` lifts them to 4.5:1 for the Higher contrast setting. Pages under an opaque overlay are cleared from semantics.
+- **Hints, not tutorials**: the home page teaches its gestures with one quiet line at a time (`home/Hints.kt`), each learned by doing it, never by dismissing it. A new gesture worth teaching joins `Hint`; existing installs start with every hint learned.
 - **Components**: `NulisCard`, `PillButton` (default/primary/danger), `NulisIconButton` with hand-drawn `Glyph`s, `NulisToggle`, `NulisBottomSheet` with look-specific `DragHandle`, `SectionLabel`, `ListRow`, `Hairline`, `dotGrid()`, `SegmentedPills`, `FitWidth` (shrinks type that would not fit), `ScaledPreview`/`BlockPreviewCard`/`PageMiniature` for live previews. Pickers always show live block previews, never text chips.
 - **Layout and feel**: 8dp grid, 24dp screen margins (`NulisSpacing`), 48dp touch targets. Tweens only: 150ms state, 200ms screens (`NulisMotion`). Haptic `SegmentTick` on selection, `ToggleOn/Off` on toggles. No Material ripples; pressed states dim to 60%.
 
@@ -47,14 +51,15 @@ All UI is built from `ui/theme` tokens and `ui/components`. Never hardcode a fon
 - The page list itself (`PagesConfig`: ordered ids plus the home id, at most five) lives in the same store and is owned by `LayoutRepository`.
 - `BlockRegistry.definitions` is the only registration point. A new type implements `BlockDefinition`; a new style implements `BlockStyle` and joins that definition's `styles` list. Nothing else changes.
 - A definition alone reads and writes its settings, renders its `Options` in the sheet, supplies `previewSettings` so previews show real data, declares a `minSpan` and a `defaultSpan` in grid cells, and may declare a `tapAction` and a taller `previewHeight`.
-- **Every style has to survive any legal rectangle.** `minSpan` is the floor the editor enforces; above it a style reflows, and `BlockFrame` scales anything that still overflows rather than letting it spill onto a neighbour.
+- **Every style has to survive any legal rectangle.** `minSpan` is the floor the editor enforces; above it a style reflows, and `BlockFrame` scales anything that still overflows rather than letting it spill onto a neighbour. `BlockFrame` also never lets a word or number break mid-word: it lays the block out as wide as its longest word and scales it down. So a block's layout must answer intrinsic measurements - prefer plain layouts to `BoxWithConstraints` inside a style, and read `blockArea()` for the rectangle instead.
+- **Big screens**: `PageBoard` draws a block's contents at `blockScale()` of their phone size when its cells are bigger than a phone's (tablets). Every phone gets exactly 1. Size things in dp and sp and they scale for free.
 - **Every style honours alignment**, through `BlockColumn` / `BlockRow` / `BlockBox` / `BlockCaptionRow` or a plain `textAlign` from `blockAlign()`. Bars and charts grow out of the aligned edge.
 
 ## Workflow
 
 After every change:
 
-1. **Build** `./gradlew assemblePerf` and fix every error. The `perf` build type is release-optimised (R8, not debuggable) but signed with the debug key; the debug build is 5-10x slower per frame and must never be used to judge feel.
+1. **Build** `./gradlew assemblePlayPerf` and fix every error. The `perf` build type is release-optimised (R8, not debuggable) but signed with the debug key; the debug build is 5-10x slower per frame and must never be used to judge feel.
 2. **Install** on the USB phone if `adb devices` lists one; otherwise say so explicitly. Never fail silently.
 
    **Never lock or sleep the phone.** Do not send `KEYCODE_POWER`, `KEYCODE_SLEEP`,
@@ -64,7 +69,7 @@ After every change:
    something does not render off-screen, swipe to another page or send the app to the background;
    never use the screen. Keep the screen awake with `stay_on_while_plugged_in` instead. Install the perf build and compile it with its baseline profile, which is what a Play install would do:
    ```
-   adb install -r app/build/outputs/apk/perf/app-perf.apk
+   adb install -r app/build/outputs/apk/play/perf/app-play-perf.apk
    adb shell am start -n com.nulis.launcher/.MainActivity   # then wait ~2 s
    adb shell am broadcast -a androidx.profileinstaller.action.INSTALL_PROFILE -p com.nulis.launcher/androidx.profileinstaller.ProfileInstallReceiver   # then wait ~4 s
    adb shell cmd package compile -m speed-profile -f com.nulis.launcher
@@ -82,7 +87,8 @@ After every change:
    ```
    adb shell dumpsys package com.nulis.launcher | grep -m1 status=   # wants status=speed-profile
    ```
-3. **Verify lean.** Screenshot only the screens you changed, in the currently active look and theme. Prefer `uiautomator dump` hierarchy checks over screenshots when you only need to confirm something exists or works. Run a multi-look, multi-theme screenshot tour only when the user explicitly asks for a "full visual review". For anything that scrolls, pages or animates, check frame stats (`dumpsys gfxinfo com.nulis.launcher framestats` around one `input swipe`; budget is 11 ms at 90 Hz) on the perf build.
-4. **Commit and push** to `main` with a short message. Never commit build outputs, `local.properties` or keystores.
+3. **Test.** `./gradlew testPlayPerfUnitTest testPlayDebugUnitTest lintPlayPerf lintGithubPerf`. `testPlayDebugUnitTest` includes the screenshot tours (Robolectric + Roborazzi, `app/src/testDebug/.../screenshots`), which drive the real launcher on the JVM and fail on a crash or an unlabelled tappable node. With no phone (a cloud session), `./gradlew recordRoborazziPlayDebug` writes every screen to `app/build/screenshots/` and the store images to `docs/store/`: look at the screens you changed there instead of on a device.
+4. **Verify lean.** Screenshot only the screens you changed, in the currently active look and theme. Prefer `uiautomator dump` hierarchy checks over screenshots when you only need to confirm something exists or works. Run a multi-look, multi-theme screenshot tour only when the user explicitly asks for a "full visual review". For anything that scrolls, pages or animates, check frame stats (`dumpsys gfxinfo com.nulis.launcher framestats` around one `input swipe`; budget is 11 ms at 90 Hz) on the perf build.
+5. **Commit and push** to `main` with a short message. Never commit build outputs, `local.properties` or keystores.
 
 Report the result of each step.

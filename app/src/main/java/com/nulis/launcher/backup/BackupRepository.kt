@@ -97,6 +97,7 @@ class BackupRepository(
             notes = writing.notes,
             journal = writing.journal,
             tasks = writing.tasks,
+            habits = writing.habits,
             wellbeing = BackupWellbeing(
                 pausedPackages = wellbeing.pausedPackages.toList(),
                 pauseSeconds = wellbeing.pauseSeconds,
@@ -161,7 +162,7 @@ class BackupRepository(
         categoryRepository.replaceAll(backup.categories)
         gesturesRepository.importBindings(backup.gestures)
         appCustomizationRepository.replaceAll(backup.appNames, backup.appIcons, backup.hiddenApps.toSet())
-        writingRepository.replaceAll(backup.notes, backup.journal, backup.tasks)
+        writingRepository.replaceAll(backup.notes, backup.journal, backup.tasks, backup.habits)
         focusRepository.replaceAll(backup.focusSessions, backup.focusMinutes, backup.breakMinutes)
         backup.wellbeing?.let { stored ->
             wellbeingRepository.replaceAll(

@@ -5,10 +5,11 @@ package com.nulis.launcher.widgets
 import android.app.Activity
 import android.appwidget.AppWidgetManager
 import android.content.Intent
-import android.graphics.Paint
 import android.graphics.ColorMatrix
 import android.graphics.ColorMatrixColorFilter
+import android.graphics.Paint
 import android.view.View
+import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
@@ -22,11 +23,12 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.nulis.launcher.blocks.Block
@@ -91,12 +93,24 @@ object WidgetBlockDefinition : BlockDefinition {
     @Composable
     override fun Options(block: Block, context: BlockContext, onUpdate: (Block) -> Unit) {
         val host = LocalWidgetHost.current
+        val activity = LocalActivity.current
         val picker = rememberWidgetPicker(block, onUpdate)
         PillButton(
             text = if (widgetId(block) == WidgetHost.INVALID) "Choose a widget" else "Choose another",
             onClick = picker,
             modifier = Modifier.fillMaxWidth(),
         )
+        // A widget that says it can be set up again gets a way back into its own settings.
+        val id = widgetId(block)
+        val info = remember(host, id) { host?.providerFor(id) }
+        if (host != null && activity != null && host.canReconfigure(info)) {
+            Spacer(Modifier.height(8.dp))
+            PillButton(
+                text = "Widget settings",
+                onClick = { host.startSetup(activity, WidgetHost.PendingSetup(id, block.id, WidgetHost.INVALID, reconfigure = true)) },
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
         Spacer(Modifier.height(16.dp))
         com.nulis.launcher.ui.components.ListRow(
             title = "Take the colour out",
@@ -120,64 +134,58 @@ object WidgetBlockDefinition : BlockDefinition {
     /**
      * The picker, the binding and the widget's own setup screen, as one thing to call.
      *
-     * Three activities can happen in a row here and any of them can be cancelled, so the id is
-     * allocated first and handed back to the system on every path that does not end with a widget
-     * on the page. A half-bound id that nothing draws is the one way this block can leak.
+     * Three activities can happen in a row here, any of them can be cancelled, and Android may
+     * end this process while any of them is open. So the id is allocated first and held by the
+     * host - which keeps it through a restart and keeps the tidy-up sweep off it - and it is
+     * handed back to the system on every path that does not end with a widget on the page. A
+     * half-bound id that nothing draws is the one way this block can leak.
+     *
+     * The setup screen's answer does not come back here: it goes through [MainActivity] to the
+     * host, and the route places the widget by block id, so it lands even if this sheet is gone.
      */
     @Composable
     private fun rememberWidgetPicker(block: Block, onUpdate: (Block) -> Unit): () -> Unit {
         val host = LocalWidgetHost.current
-        val context = LocalContext.current
-        val activity = context as? Activity
-        var pending by remember { mutableStateOf(WidgetHost.INVALID) }
-
-        val configure = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-            val id = pending
-            pending = WidgetHost.INVALID
-            if (result.resultCode == Activity.RESULT_OK && id != WidgetHost.INVALID) {
-                onUpdate(withWidgetId(block, id))
-            } else {
-                host?.forget(id)
-            }
-        }
+        val activity = LocalActivity.current
+        // Saveable: the picker can outlive this process, and its answer names the id anyway.
+        var pending by rememberSaveable { mutableIntStateOf(WidgetHost.INVALID) }
 
         val pick = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            val asked = pending
+            pending = WidgetHost.INVALID
             val id = result.data?.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, WidgetHost.INVALID)
-                ?: pending
-            if (result.resultCode != Activity.RESULT_OK || id == WidgetHost.INVALID || host == null) {
-                host?.forget(pending)
-                pending = WidgetHost.INVALID
+                ?.takeIf { it != WidgetHost.INVALID } ?: asked
+            if (host == null) return@rememberLauncherForActivityResult
+            if (result.resultCode != Activity.RESULT_OK || id == WidgetHost.INVALID) {
+                host.release(asked)
+                host.forget(asked)
                 return@rememberLauncherForActivityResult
             }
             // The old id is only released once the new one is in hand, so a cancelled change
             // leaves the widget that was already there exactly where it was.
             val previous = widgetId(block)
             val info = host.providerFor(id)
-            val setup = info?.configure
-            if (setup != null && activity != null) {
-                pending = id
-                val intent = Intent(AppWidgetManager.ACTION_APPWIDGET_CONFIGURE)
-                    .setComponent(setup)
-                    .putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, id)
-                if (runCatching { configure.launch(intent) }.isFailure) {
-                    // A provider that names a setup screen it does not actually export is not
-                    // a reason to lose the widget; it is placed with its defaults.
-                    pending = WidgetHost.INVALID
-                    onUpdate(withWidgetId(block, id))
-                    if (previous != id) host.forget(previous)
+            if (info != null && activity != null && host.needsSetup(info)) {
+                val started = host.startSetup(activity, WidgetHost.PendingSetup(id, block.id, previous, reconfigure = false))
+                if (started) {
+                    host.release(asked.takeIf { it != id } ?: WidgetHost.INVALID)
+                    return@rememberLauncherForActivityResult
                 }
-            } else {
-                pending = WidgetHost.INVALID
-                onUpdate(withWidgetId(block, id))
-                if (previous != id) host.forget(previous)
+                // A setup screen that cannot be opened at all is not a reason to lose the
+                // widget; it is placed with its defaults.
             }
+            host.release(id)
+            onUpdate(withWidgetId(block, id))
+            if (previous != id) host.forget(previous)
         }
 
         return {
             if (host != null) {
                 val id = host.allocateId()
                 pending = id
+                host.hold(id)
                 if (runCatching { pick.launch(host.pickIntent(id)) }.isFailure) {
+                    host.release(id)
                     host.forget(id)
                     pending = WidgetHost.INVALID
                 }

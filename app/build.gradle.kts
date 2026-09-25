@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 The Nulis Launcher authors
+import java.util.Properties
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
@@ -7,6 +8,7 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.roborazzi)
 }
 
 android {
@@ -18,13 +20,49 @@ android {
         minSdk = 26
         targetSdk = 36
         versionCode = 1
-        versionName = "0.1.0"
+        versionName = "1.0.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    // The release key lives on the owner's own computer and nowhere else: never in this
+    // repository, never on a build server that did not ask for it. When the file is there, a
+    // release build is signed with it; when it is not, a release build is still made, unsigned,
+    // so nobody else's build ever fails for want of somebody else's key.
+    // scripts/make-release-key.sh makes one.
+    val releaseKeyFile = File(System.getProperty("user.home"), ".nulis-release/keystore.properties")
+    val releaseKey = releaseKeyFile.takeIf { it.isFile }?.let { file ->
+        Properties().apply { file.inputStream().use(::load) }
+    }
+    signingConfigs {
+        if (releaseKey != null) {
+            create("release") {
+                storeFile = File(releaseKey.getProperty("storeFile"))
+                storePassword = releaseKey.getProperty("storePassword")
+                keyAlias = releaseKey.getProperty("keyAlias")
+                keyPassword = releaseKey.getProperty("keyPassword")
+            }
+        }
+    }
+
+    // Two builds of one app, identical but for one line in About. Google Play does not allow a
+    // payment or tip link that is not Play's own billing, so the Play build has none at all -
+    // not a hidden one, not a string in the APK. The GitHub build, which is what the releases
+    // page and F-Droid-style installs get, carries a "Buy me a coffee" link.
+    flavorDimensions += "store"
+    productFlavors {
+        create("play") {
+            dimension = "store"
+        }
+        create("github") {
+            dimension = "store"
+        }
     }
 
     buildTypes {
         release {
             isMinifyEnabled = true
+            isDebuggable = false
+            signingConfig = signingConfigs.findByName("release")
             isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
@@ -66,11 +104,48 @@ android {
         )
     }
 
+    testOptions {
+        unitTests {
+            // Robolectric renders the real screens on the JVM for the screenshot tests, and it
+            // needs the merged resources and fonts to do it.
+            isIncludeAndroidResources = true
+            all {
+                it.maxHeapSize = "3g"
+                // The screenshot tours (src/testDebug) draw with the real renderer. Images are only
+                // written by `./gradlew recordRoborazziPlayDebug`; a plain run still drives every
+                // screen, so a crash in one still fails the build.
+                it.systemProperty("robolectric.pixelCopyRenderMode", "hardware")
+                // Android 16's framework reaches into FileDescriptor internals, which Robolectric
+                // can only intercept on a JDK that lets it in.
+                it.jvmArgs(
+                    "--add-exports=java.base/jdk.internal.access=ALL-UNNAMED",
+                    "--add-opens=java.base/jdk.internal.access=ALL-UNNAMED",
+                    "--add-opens=java.base/java.io=ALL-UNNAMED",
+                )
+            }
+        }
+    }
+
+    // The dependency list AGP would otherwise sign into the APK is an encrypted blob only Google
+    // can read. F-Droid rejects APKs that carry it, and an open-source APK has its dependencies in
+    // the open anyway. Bundles keep it: Play uses it for its SDK warnings.
+    dependenciesInfo {
+        includeInApk = false
+        includeInBundle = true
+    }
+
     buildFeatures {
         compose = true
         // The version name ends up in a backup file, so a person reading one knows what wrote it.
         buildConfig = true
     }
+}
+
+// The screenshot tours launch the whole launcher, and DataStore keeps its state per process: one
+// tour finishing onboarding would otherwise start the next one past it. A fresh JVM per test
+// class keeps every tour on a phone of its own.
+tasks.withType<Test>().configureEach {
+    if (name.endsWith("DebugUnitTest")) forkEvery = 1
 }
 
 kotlin {
@@ -95,6 +170,15 @@ dependencies {
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.kotlinx.serialization.json)
+    testImplementation(libs.robolectric)
+    testImplementation(libs.roborazzi)
+    testImplementation(libs.roborazzi.compose)
+    testImplementation(libs.roborazzi.junit.rule)
+    testImplementation(platform(libs.androidx.compose.bom))
+    testImplementation(libs.androidx.compose.ui.test.junit4)
+    testImplementation(libs.androidx.test.core)
+    testImplementation(libs.androidx.test.ext.junit)
+    debugImplementation(libs.androidx.compose.ui.test.manifest)
 
     androidTestImplementation(libs.junit)
     androidTestImplementation(libs.androidx.test.core)

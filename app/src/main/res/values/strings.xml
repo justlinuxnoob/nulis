@@ -8,7 +8,7 @@
     <string name="picker_label">Choose apps</string>
     <string name="picker_done">Done</string>
 
-    <string name="drawer_search_hint">Search apps, notes, sums</string>
+    <string name="drawer_search_hint">Search apps, notes, settings</string>
     <string name="drawer_recent">Recent</string>
     <string name="drawer_work">Work</string>
     <string name="drawer_hit_task">Task</string>
@@ -88,6 +88,8 @@
     <string name="theme_black">Black</string>
     <string name="theme_white">White</string>
     <string name="theme_custom">Custom</string>
+    <string name="theme_auto">Auto</string>
+    <string name="theme_auto_hint">Black while the phone is in dark mode, white while it is not</string>
 
     <string name="settings_label">Settings</string>
     <string name="settings_title">Nulis</string>
@@ -115,6 +117,10 @@
     <string name="about_privacy">Where your things go</string>
     <string name="about_privacy_body">Nowhere. Nulis does not declare the internet permission, so Android will not let it open a connection even if it tried to. There is no analytics and no crash reporting.</string>
     <string name="about_privacy_check">You can check that yourself: adb shell dumpsys package %1$s lists every permission it holds.</string>
+    <string name="about_source">Source code on GitHub</string>
+    <string name="about_source_hint">Every line of Nulis, free under the GPL</string>
+    <string name="about_coffee">Buy me a coffee</string>
+    <string name="about_coffee_hint">If Nulis made your phone a little calmer</string>
     <string name="about_version">Version</string>
     <string name="settings_font_licenses">Font licences</string>
     <string name="settings_font_licenses_hint">Every face Nulis ships, and its licence</string>
@@ -140,6 +146,8 @@
     <string name="settings_sound_volume">Volume</string>
     <string name="settings_reduced_motion">Reduced motion</string>
     <string name="settings_reduced_motion_hint">Calmer springs, still animated blocks</string>
+    <string name="settings_high_contrast">Higher contrast</string>
+    <string name="settings_high_contrast_hint">Brighter captions, text and lines, for bright light or tired eyes</string>
     <string name="settings_backup">Backup</string>
     <string name="settings_backup_row">Export, import, reset</string>
     <string name="settings_backup_hint">One file with everything in it</string>

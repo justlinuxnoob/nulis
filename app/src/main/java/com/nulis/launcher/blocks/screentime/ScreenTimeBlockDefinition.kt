@@ -11,6 +11,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import com.nulis.launcher.ui.components.SectionLabel
+import com.nulis.launcher.ui.components.SegmentedPills
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -84,6 +86,37 @@ object ScreenTimeBlockDefinition : BlockDefinition {
     /** Request arg that opens the explanation screen directly, e.g. from settings. */
     const val PERMISSION = "permission"
 
+    /** Which total the Today style shows: time in apps (the default) or time with the screen on. */
+    private const val KEY_COUNT = "count"
+    private const val COUNT_SCREEN = "screen"
+
+    /** True when [block] counts screen-on time and this phone can tell it. */
+    private fun countsScreenOn(block: Block, state: ScreenTimeState): Boolean =
+        block.settings[KEY_COUNT] == COUNT_SCREEN && state.screenOnMinutes != null
+
+    override val hasOptions: Boolean get() = true
+
+    @Composable
+    override fun Options(block: Block, context: BlockContext, onUpdate: (Block) -> Unit) {
+        Column(Modifier.fillMaxWidth()) {
+            SectionLabel("Today counts")
+            SegmentedPills(
+                options = listOf(false, true),
+                selected = block.settings[KEY_COUNT] == COUNT_SCREEN,
+                label = { if (it) "Screen on" else "In apps" },
+                onSelect = { screen ->
+                    onUpdate(block.copy(settings = if (screen) block.settings + (KEY_COUNT to COUNT_SCREEN) else block.settings - KEY_COUNT))
+                },
+            )
+            Spacer(Modifier.height(8.dp))
+            Caption(
+                "In apps adds up the apps you opened. Screen on is every minute the phone was unlocked, " +
+                    "home screen included: the number Digital Wellbeing shows.",
+                lines = 3,
+            )
+        }
+    }
+
     // The donut and the dot grid are drawn shapes and need more than a line of text's height.
     override val previewHeight get() = 112.dp
 
@@ -113,10 +146,15 @@ object ScreenTimeBlockDefinition : BlockDefinition {
             val colors = NulisTheme.colors
             val wide = block.size == BlockSize.WIDE
             val state = context.screenTime
+            val screenOn = countsScreenOn(block, state)
             BlockColumn(modifier.open(context)) {
                 BlockRow(verticalAlignment = Alignment.Bottom) {
                     Text(
-                        if (state.granted) formatMinutes(state.totalMinutes) else "--",
+                        when {
+                            !state.granted -> "--"
+                            screenOn -> formatMinutes(state.screenOnMinutes ?: 0)
+                            else -> formatMinutes(state.totalMinutes)
+                        },
                         style = if (wide) NulisTheme.type.displayL else NulisTheme.type.displayM,
                         color = colors.onBackground,
                     )
@@ -124,7 +162,7 @@ object ScreenTimeBlockDefinition : BlockDefinition {
                     // cut to "SCREEN ..." says less than no legend at all.
                     if (blockArea().width >= CompactBlockWidth) {
                         Spacer(Modifier.width(12.dp))
-                        Caption("Screen time", modifier = Modifier.padding(bottom = if (wide) 8.dp else 4.dp))
+                        Caption(if (screenOn) "Screen on" else "Screen time", modifier = Modifier.padding(bottom = if (wide) 8.dp else 4.dp))
                     }
                 }
                 if (!state.granted) {
@@ -425,7 +463,16 @@ private fun ScreenTimeScreen(context: BlockContext, onClose: () -> Unit) {
     val colors = NulisTheme.colors
     val state = context.screenTime
     val max = state.apps.firstOrNull()?.minutes?.coerceAtLeast(1) ?: 1
-    NulisScreen(label = "Screen time today", title = formatMinutes(state.totalMinutes), onBack = onClose) {
+    NulisScreen(label = "Screen time", title = "Today", onBack = onClose) {
+        // Two different questions, both worth answering: how long went on apps, and how long the
+        // screen was on at all - the home screen, the shade and the switcher included, which is
+        // what Digital Wellbeing counts.
+        Row(Modifier.fillMaxWidth()) {
+            TotalReadout("In apps", formatMinutes(state.totalMinutes), Modifier.weight(1f))
+            state.screenOnMinutes?.let { TotalReadout("Screen on", formatMinutes(it), Modifier.weight(1f)) }
+        }
+        Spacer(Modifier.height(16.dp))
+        Hairline()
         // The Other row is the one that raises a question, so it is the one that answers it.
         var otherExplained by rememberSaveable { mutableStateOf(false) }
         LazyColumn(Modifier.fillMaxSize().fadeTop()) {
@@ -467,6 +514,15 @@ private fun ScreenTimeScreen(context: BlockContext, onClose: () -> Unit) {
                 Hairline()
             }
         }
+    }
+}
+
+@Composable
+private fun TotalReadout(label: String, value: String, modifier: Modifier = Modifier) {
+    Column(modifier) {
+        Caption(label)
+        Spacer(Modifier.height(2.dp))
+        Text(value, style = NulisTheme.type.displayS, color = NulisTheme.colors.onBackground, maxLines = 1)
     }
 }
 

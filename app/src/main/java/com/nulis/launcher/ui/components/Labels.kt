@@ -44,7 +44,10 @@ fun SectionLabel(
 
 /**
  * Mono caption in the tertiary color, e.g. a count or a hint. One line by default, because most
- * captions sit beside something; pass [lines] for the few that are a whole sentence.
+ * captions sit beside something; pass [lines] above one for a caption that is a sentence, and it
+ * wraps as far as it needs to. A sentence cut off with an ellipsis - "your notes, journal and
+ * tasks are n..." - is worse than no sentence, and at a large font scale no line count guessed
+ * in advance is ever enough.
  */
 @Composable
 fun Caption(text: String, modifier: Modifier = Modifier, lines: Int = 1) {
@@ -53,7 +56,7 @@ fun Caption(text: String, modifier: Modifier = Modifier, lines: Int = 1) {
         style = NulisTheme.type.label,
         color = NulisTheme.colors.tertiary,
         modifier = modifier,
-        maxLines = lines,
+        maxLines = if (lines > 1) Int.MAX_VALUE else 1,
         overflow = TextOverflow.Ellipsis,
     )
 }

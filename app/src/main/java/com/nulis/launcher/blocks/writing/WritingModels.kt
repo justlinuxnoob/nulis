@@ -4,6 +4,7 @@ package com.nulis.launcher.blocks.writing
 
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
+import java.time.LocalDate
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -29,6 +30,7 @@ data class WritingState(
     val notes: List<Note> = emptyList(),
     val journal: List<JournalEntry> = emptyList(),
     val tasks: List<Task> = emptyList(),
+    val habits: Habits = Habits(),
 )
 
 /** What the writing blocks and their editors can do. Implemented by the view model. */
@@ -44,6 +46,12 @@ interface WritingActions {
     fun toggleTask(id: String)
     fun deleteTask(id: String)
     fun clearDoneTasks()
+
+    /** Ticks [habitId] for [date], or unticks it if it was ticked. */
+    fun toggleHabit(habitId: String, date: LocalDate) = Unit
+    fun addHabit(name: String) = Unit
+    fun renameHabit(habitId: String, name: String) = Unit
+    fun deleteHabit(habitId: String) = Unit
 
     object None : WritingActions {
         override fun addNote(text: String) = ""

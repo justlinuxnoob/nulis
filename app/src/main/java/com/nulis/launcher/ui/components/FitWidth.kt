@@ -6,7 +6,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.runtime.remember
+import androidx.compose.ui.layout.IntrinsicMeasurable
+import androidx.compose.ui.layout.IntrinsicMeasureScope
 import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.layout.Measurable
+import androidx.compose.ui.layout.MeasurePolicy
+import androidx.compose.ui.layout.MeasureResult
+import androidx.compose.ui.layout.MeasureScope
 import androidx.compose.ui.unit.Constraints
 import kotlin.math.roundToInt
 
@@ -28,9 +35,18 @@ fun FitWidth(
     align: Alignment.Horizontal = Alignment.Start,
     content: @Composable () -> Unit,
 ) {
-    Layout(content = content, modifier = modifier) { measurables, constraints ->
+    Layout(content = content, modifier = modifier, measurePolicy = remember(align) { FitWidthPolicy(align) })
+}
+
+private class FitWidthPolicy(private val align: Alignment.Horizontal) : MeasurePolicy {
+
+    // Shrinking is the whole point, so there is no width this cannot be drawn at. Saying so keeps
+    // BlockFrame from shrinking the whole block around content that would have shrunk itself.
+    override fun IntrinsicMeasureScope.minIntrinsicWidth(measurables: List<IntrinsicMeasurable>, height: Int): Int = 0
+
+    override fun MeasureScope.measure(measurables: List<Measurable>, constraints: Constraints): MeasureResult {
         val placeable = measurables.firstOrNull()?.measure(Constraints())
-            ?: return@Layout layout(constraints.minWidth, constraints.minHeight) {}
+            ?: return layout(constraints.minWidth, constraints.minHeight) {}
         val available = constraints.maxWidth
         val scale = if (available == Constraints.Infinity || placeable.width <= available) {
             1f
@@ -46,7 +62,7 @@ fun FitWidth(
             scaledWidth.coerceIn(constraints.minWidth, available)
         }
         val height = (placeable.height * scale).roundToInt()
-        layout(width, constraints.constrainHeight(height)) {
+        return layout(width, constraints.constrainHeight(height)) {
             val x = align.align(scaledWidth, width, layoutDirection)
             placeable.placeWithLayer(x, 0) {
                 scaleX = scale

@@ -65,6 +65,8 @@ fun PaletteRow(
     context: BlockContext,
     current: Palette?,
     onApply: (Palette) -> Unit,
+    /** The wallpaper's own palette, first in the row when the phone can say what it is. */
+    wallpaper: Palette? = null,
 ) {
     val haptics = LocalHapticFeedback.current
     val layout = home ?: PageLayout(PageIds.HOME)
@@ -76,12 +78,13 @@ fun PaletteRow(
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         contentPadding = PaddingValues(vertical = 4.dp),
     ) {
-        items(Palettes.all, key = { it.id }) { palette ->
+        items(listOfNotNull(wallpaper) + Palettes.all, key = { it.id }) { palette ->
             val colors = remember(palette) { customColors(palette.background, palette.ink).copy(accent = palette.accent) }
             Column(Modifier.width(144.dp)) {
                 NulisCard(
                     modifier = Modifier.fillMaxWidth(),
                     selected = palette.id == current?.id,
+                    label = palette.name,
                     shape = NulisShapes.tile,
                     contentPadding = 8.dp,
                     onClick = {
@@ -232,9 +235,9 @@ private fun ColorDot(
 }
 
 /** The palette the current colours came from, if they still match one exactly. */
-fun paletteOf(preferences: UiPreferences): Palette? {
+fun paletteOf(preferences: UiPreferences, wallpaper: Palette? = null): Palette? {
     if (preferences.colorTheme != ColorTheme.CUSTOM) return null
-    return Palettes.all.firstOrNull {
+    return (listOfNotNull(wallpaper) + Palettes.all).firstOrNull {
         it.background.toArgb() == preferences.customBackground &&
             it.ink.toArgb() == preferences.customInk &&
             it.accent.toArgb() == preferences.customAccent

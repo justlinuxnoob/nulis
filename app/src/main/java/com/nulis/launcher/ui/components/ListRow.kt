@@ -36,7 +36,7 @@ fun ListRow(
      * ellipsis. Two lines is enough for every string Nulis ships and keeps the row from becoming
      * a paragraph; pass 1 where a row must stay exactly 56dp tall.
      */
-    subtitleLines: Int = 2,
+    subtitleLines: Int = Int.MAX_VALUE,
     titleColor: Color? = null,
     enabled: Boolean = true,
     onClick: (() -> Unit)? = null,
@@ -74,7 +74,7 @@ fun ListRow(
                     text = title,
                     style = NulisTheme.type.bodyL,
                     color = titleColor ?: colors.onBackground,
-                    maxLines = 1,
+                    maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
                 if (subtitle != null) {

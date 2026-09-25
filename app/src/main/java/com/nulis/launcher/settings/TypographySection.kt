@@ -189,6 +189,7 @@ private fun FontCard(
         NulisCard(
             modifier = Modifier.fillMaxWidth(),
             selected = selected,
+            label = "$label, $note",
             shape = NulisShapes.tile,
             contentPadding = 12.dp,
             onClick = onClick,

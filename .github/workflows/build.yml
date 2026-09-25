@@ -1,11 +1,16 @@
 name: Build
 
-# Every push to main is tested, linted, built as a perf APK and attached to a rolling
-# "latest" prerelease. Pull requests get everything except the release.
+# Every push to main is tested, linted and built, and the GitHub build's APK is attached to a
+# rolling "latest" prerelease. A tag like v1.0.0 makes a proper release with the same APK.
+# Pull requests get everything except a release.
+#
+# Two flavors: "play" (what goes to Google Play: no donation link anywhere) and "github" (the
+# same app plus a "Buy me a coffee" link in About). Only the github flavor is published here.
 
 on:
   push:
     branches: [main]
+    tags: ['v*']
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -26,11 +31,12 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - name: Set up JDK 17
+      # 21, not 17: the screenshot tests run Android 16 under Robolectric, which needs it.
+      - name: Set up JDK 21
         uses: actions/setup-java@v5
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: '21'
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
@@ -40,34 +46,75 @@ jobs:
       # Put your own ~/.android/debug.keystore in the NULIS_DEBUG_KEYSTORE_BASE64 secret
       # (`base64 -w0 ~/.android/debug.keystore`) and every CI build installs over every other one,
       # and over the builds you make at your desk.
-      - name: Signing key
+      - name: Debug signing key
         env:
           KEYSTORE: ${{ secrets.NULIS_DEBUG_KEYSTORE_BASE64 }}
         run: |
           if [ -n "$KEYSTORE" ]; then
             mkdir -p ~/.android
             printf '%s' "$KEYSTORE" | base64 -d > ~/.android/debug.keystore
-            echo "SIGNED_WITH=the repository's debug key" >> "$GITHUB_ENV"
           else
-            echo "::notice::No NULIS_DEBUG_KEYSTORE_BASE64 secret. Gradle will generate a throwaway debug key, so this APK will not install over any other build."
-            echo "SIGNED_WITH=a throwaway debug key generated for this run" >> "$GITHUB_ENV"
+            echo "::notice::No NULIS_DEBUG_KEYSTORE_BASE64 secret. Perf builds get a throwaway debug key."
+          fi
+
+      # Optional. With these four secrets the GitHub release APK is signed with the real release
+      # key (see scripts/make-release-key.sh); without them it falls back to the perf build.
+      # The key is written to the runner's home, used, and gone with the runner.
+      - name: Release signing key
+        id: release_key
+        env:
+          KEYSTORE: ${{ secrets.NULIS_RELEASE_KEYSTORE_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.NULIS_RELEASE_STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.NULIS_RELEASE_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.NULIS_RELEASE_KEY_PASSWORD }}
+        run: |
+          if [ -n "$KEYSTORE" ] && [ -n "$STORE_PASSWORD" ] && [ -n "$KEY_ALIAS" ] && [ -n "$KEY_PASSWORD" ]; then
+            mkdir -p ~/.nulis-release
+            printf '%s' "$KEYSTORE" | base64 -d > ~/.nulis-release/release.jks
+            {
+              echo "storeFile=$HOME/.nulis-release/release.jks"
+              echo "storePassword=$STORE_PASSWORD"
+              echo "keyAlias=$KEY_ALIAS"
+              echo "keyPassword=$KEY_PASSWORD"
+            } > ~/.nulis-release/keystore.properties
+            chmod 600 ~/.nulis-release/*
+            echo "signed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::No release key secrets. The GitHub APK is the perf build, signed with the debug key."
+            echo "signed=false" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Unit tests
-        run: ./gradlew --no-daemon testPerfUnitTest
+        run: ./gradlew --no-daemon testPlayPerfUnitTest testGithubPerfUnitTest
+
+      # Drives the real launcher through every screen on the JVM, plus the Robolectric tests.
+      # No images are written unless asked for (`recordRoborazziPlayDebug`), but a screen that
+      # crashes, or a tappable thing a screen reader cannot name, fails here.
+      - name: Screenshot tours and Robolectric tests
+        run: ./gradlew --no-daemon testPlayDebugUnitTest
 
       - name: Lint
-        run: ./gradlew --no-daemon lintPerf
+        run: ./gradlew --no-daemon lintPlayPerf lintGithubPerf
 
-      - name: Build the perf APK
-        run: ./gradlew --no-daemon assemblePerf
+      - name: Build
+        run: |
+          if [ "${{ steps.release_key.outputs.signed }}" = "true" ]; then
+            ./gradlew --no-daemon assembleGithubRelease bundlePlayRelease
+          else
+            ./gradlew --no-daemon assembleGithubPerf assemblePlayRelease
+          fi
 
       - name: Name the APK
         id: apk
         run: |
           version=$(grep -oP 'versionName\s*=\s*"\K[^"]+' app/build.gradle.kts)
+          if [ "${{ steps.release_key.outputs.signed }}" = "true" ]; then
+            source=app/build/outputs/apk/github/release/app-github-release.apk
+          else
+            source=app/build/outputs/apk/github/perf/app-github-perf.apk
+          fi
           name="nulis-${version}-${GITHUB_SHA::7}.apk"
-          cp app/build/outputs/apk/perf/app-perf.apk "$name"
+          cp "$source" "$name"
           echo "name=$name" >> "$GITHUB_OUTPUT"
           echo "version=$version" >> "$GITHUB_OUTPUT"
           ls -l "$name"
@@ -79,6 +126,15 @@ jobs:
           path: ${{ steps.apk.outputs.name }}
           if-no-files-found: error
 
+      # Only with the release key: the bundle Play Console wants. Upload it by hand.
+      - name: Upload the Play bundle
+        if: steps.release_key.outputs.signed == 'true'
+        uses: actions/upload-artifact@v5
+        with:
+          name: nulis-play-${{ steps.apk.outputs.version }}-${{ github.sha }}.aab
+          path: app/build/outputs/bundle/playRelease/app-play-release.aab
+          if-no-files-found: error
+
       - name: Upload test and lint reports
         if: always()
         uses: actions/upload-artifact@v5
@@ -86,7 +142,7 @@ jobs:
           name: reports-${{ github.sha }}
           path: |
             app/build/reports/tests/
-            app/build/reports/lint-results-perf.html
+            app/build/reports/lint-results-*.html
           if-no-files-found: ignore
 
       # The rolling "latest" release always points at the newest commit on main, so the tag is
@@ -96,10 +152,15 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          signed="${{ steps.release_key.outputs.signed }}"
           {
             echo "Built from [\`${GITHUB_SHA::7}\`](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/commit/${GITHUB_SHA}) on $(date -u '+%Y-%m-%d %H:%M UTC')."
             echo
-            echo "Version ${{ steps.apk.outputs.version }}, \`perf\` build type: release-optimised (R8, not debuggable), signed with ${SIGNED_WITH}."
+            if [ "$signed" = "true" ]; then
+              echo "Version ${{ steps.apk.outputs.version }}, GitHub build, signed with the release key."
+            else
+              echo "Version ${{ steps.apk.outputs.version }}, GitHub build, \`perf\` build type, signed with a debug key."
+            fi
             echo
             echo "**This is a development build, not a release.** It is rebuilt on every push to \`main\` and replaced in place, so what is attached here changes without warning."
             echo
@@ -115,3 +176,16 @@ jobs:
             --prerelease \
             --target "$GITHUB_SHA" \
             "${{ steps.apk.outputs.name }}"
+
+      # A version tag gets a real release, with the same APK under a plain name.
+      - name: Tagged release
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="${GITHUB_REF#refs/tags/}"
+          cp "${{ steps.apk.outputs.name }}" "nulis-${tag}.apk"
+          gh release create "$tag" \
+            --title "Nulis ${tag#v}" \
+            --generate-notes \
+            "nulis-${tag}.apk"

@@ -20,6 +20,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.nulis.launcher.ui.theme.NulisMotion
@@ -39,6 +43,13 @@ fun NulisCard(
     onClick: (() -> Unit)? = null,
     shape: Shape = NulisShapes.card,
     contentPadding: Dp = 16.dp,
+    /**
+     * What a screen reader calls this card. A card that is a choice - a layout, a look, a style -
+     * is usually a live preview with its name written underneath, outside the card, and a preview
+     * says nothing: without this, the card is announced as an unlabelled button. With it, the
+     * card is its name and whether it is the chosen one, and the preview inside keeps quiet.
+     */
+    label: String? = null,
     content: @Composable BoxScope.() -> Unit,
 ) {
     val colors = NulisTheme.colors
@@ -59,10 +70,24 @@ fun NulisCard(
             .clip(shape)
             .background(surface)
             .border(1.dp, border, shape)
+            .then(
+                if (label != null) {
+                    Modifier.semantics {
+                        contentDescription = label
+                        this.selected = selected
+                    }
+                } else {
+                    Modifier
+                },
+            )
             .then(if (onClick != null) Modifier.clickable(interactionSource = interaction, indication = null, onClick = onClick) else Modifier)
             .padding(contentPadding),
     ) {
-        content()
+        if (label != null) {
+            Box(Modifier.clearAndSetSemantics { }) { content() }
+        } else {
+            content()
+        }
         if (selected) {
             Box(
                 Modifier

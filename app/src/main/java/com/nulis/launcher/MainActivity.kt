@@ -66,7 +66,15 @@ class MainActivity : ComponentActivity() {
     private val uiPreferencesRepository by lazy { UiPreferencesRepository(applicationContext) }
 
     // Read once, synchronously, so the first frame and the window behind it already match.
-    private val initialPreferences by lazy { uiPreferencesRepository.readNow() }
+    private val initialPreferences by lazy { uiPreferencesRepository.readNow().copy(systemDark = systemIsDark()) }
+
+    /**
+     * Dark mode, as the phone has it now. The activity is recreated when it changes, so asking
+     * once in onCreate is asking every time it matters.
+     */
+    private fun systemIsDark(): Boolean =
+        (resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
+            android.content.res.Configuration.UI_MODE_NIGHT_YES
 
     /** Lives as long as the activity: it owns the generated audio buffers. */
     private val soundPlayer = SoundPlayer()
@@ -127,6 +135,7 @@ class MainActivity : ComponentActivity() {
             stepsRepository = StepsRepository(applicationContext),
             musicRepository = MusicRepository(applicationContext),
             gesturesRepository = gesturesRepository,
+            wallpaperColorsRepository = com.nulis.launcher.settings.WallpaperColorsRepository(applicationContext),
         )
     }
 
@@ -166,6 +175,10 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // A widget half-way through the picker or its own setup screen when Android ended the
+        // process: its id, and which block it was for.
+        widgetHost.restoreState(savedInstanceState)
+        viewModel.setSystemDark(systemIsDark())
         applyWindow(initialPreferences)
         preferHighestRefreshRate()
 
@@ -207,6 +220,26 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        widgetHost.saveState(outState)
+    }
+
+    /**
+     * A widget's own setup screen answering. It is started through the widget host, which is the
+     * only way that reaches a setup screen the provider did not export, and the host can only
+     * report back the old way.
+     */
+    @Deprecated("The widget host starts its setup screens with startActivityForResult.")
+    @Suppress("DEPRECATION")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        if (requestCode == WidgetHost.REQUEST_CONFIGURE) {
+            widgetHost.onSetupResult(resultCode)
+            return
+        }
+        super.onActivityResult(requestCode, resultCode, data)
+    }
+
     override fun onDestroy() {
         soundPlayer.release()
         super.onDestroy()
@@ -220,8 +253,12 @@ class MainActivity : ComponentActivity() {
 
     /** Asks for the fastest display mode at the current resolution so gestures track at 90/120 Hz. */
     private fun preferHighestRefreshRate() {
+        // A context with no display of its own throws rather than returning null; a refresh rate
+        // is a nicety, never a reason not to start.
         @Suppress("DEPRECATION")
-        val display: Display = (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) display else windowManager.defaultDisplay) ?: return
+        val display: Display = runCatching {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) display else windowManager.defaultDisplay
+        }.getOrNull() ?: return
         val current = display.mode
         val fastest = display.supportedModes
             .filter { it.physicalWidth == current.physicalWidth && it.physicalHeight == current.physicalHeight }

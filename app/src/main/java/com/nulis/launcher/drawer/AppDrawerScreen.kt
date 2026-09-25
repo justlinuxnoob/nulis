@@ -76,8 +76,11 @@ import com.nulis.launcher.R
 import com.nulis.launcher.apps.AppCategory
 import com.nulis.launcher.apps.AppInfo
 import com.nulis.launcher.apps.Categories
-import com.nulis.launcher.blocks.screentime.formatMinutes
 import com.nulis.launcher.blocks.writing.WritingState
+import com.nulis.launcher.blocks.screentime.formatMinutes
+import com.nulis.launcher.gestures.GestureGlyph
+import com.nulis.launcher.gestures.GestureTrigger
+import com.nulis.launcher.gestures.rememberFiniteGesturePhase
 import com.nulis.launcher.icons.AppGlyph
 import com.nulis.launcher.icons.IconStyle
 import com.nulis.launcher.icons.LocalIconLoader
@@ -155,6 +158,9 @@ fun AppDrawerScreen(
     actions: DrawerActions,
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
+    /** Until somebody has held an app once: a line saying that holding one does something. */
+    holdHint: Boolean = false,
+    onAppMenuOpened: () -> Unit = {},
 ) {
     val colors = NulisTheme.colors
     var query by remember { mutableStateOf("") }
@@ -243,6 +249,18 @@ fun AppDrawerScreen(
                     .scrollable(rememberScrollableState { 0f }, Orientation.Vertical)
                     .padding(horizontal = NulisSpacing.screenMargin, vertical = 12.dp),
             )
+            // Above the list rather than in it: the rail scrolls to list positions, and an extra
+            // row at the top would put every letter one row out.
+            if (holdHint && query.isEmpty()) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(start = NulisSpacing.screenMargin, end = NulisSpacing.screenMargin, bottom = 8.dp),
+                ) {
+                    GestureGlyph(GestureTrigger.LONG_PRESS, rememberFiniteGesturePhase(settled, running = settled), Modifier.size(20.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Caption("Hold an app to put it on home, rename or hide it", lines = 2)
+                }
+            }
             Box(
                 Modifier
                     .fillMaxSize()
@@ -280,7 +298,10 @@ fun AppDrawerScreen(
                                     iconStyle = iconStyle,
                                     muted = entry.app.packageName in mutedPackages,
                                     onLaunch = onLaunch,
-                                    onLongClick = { menuApp = entry.app },
+                                    onLongClick = {
+                                        menuApp = entry.app
+                                        onAppMenuOpened()
+                                    },
                                 )
                             }
                             is DrawerEntry.Hit -> item(key = entry.key) {
@@ -311,8 +332,18 @@ fun AppDrawerScreen(
                     }
                     Column {
                         Text(app.label, style = NulisTheme.type.displayM, color = colors.onBackground, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Spacer(Modifier.height(4.dp))
-                        Caption(if (app.isWork) "${app.packageName} · Work" else app.packageName)
+                        // What somebody can use: whether it is the work copy, and how long it has had
+                        // today. The package name was a developer's answer to a question nobody
+                        // holding a phone asks; App info still shows it.
+                        val minutes = usageMinutes?.get(app.packageName)
+                        val facts = listOfNotNull(
+                            "Work profile".takeIf { app.isWork },
+                            minutes?.takeIf { it > 0 }?.let { formatMinutes(it) + " today" },
+                        )
+                        if (facts.isNotEmpty()) {
+                            Spacer(Modifier.height(4.dp))
+                            Caption(facts.joinToString(" · "))
+                        }
                     }
                 }
                 Spacer(Modifier.height(16.dp))
@@ -710,3 +741,4 @@ private fun SearchPill(
         }
     }
 }
+

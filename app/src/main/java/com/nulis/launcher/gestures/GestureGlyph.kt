@@ -3,6 +3,9 @@
 package com.nulis.launcher.gestures
 
 import androidx.compose.animation.core.LinearEasing
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.animation.core.Animatable
 import androidx.compose.runtime.State
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -44,6 +47,53 @@ fun rememberGesturePhase(): State<Float> {
         animationSpec = infiniteRepeatable(tween(CycleMillis, easing = LinearEasing)),
         label = "gesturePhase",
     )
+}
+
+/**
+ * The same clock, run [cycles] times and then left at rest. For a demonstration on the home page
+ * itself, where a loop that never ends would keep the display awake for as long as the page is
+ * on screen: three times is enough to be seen, and after that it costs nothing.
+ */
+@Composable
+fun rememberFiniteGesturePhase(key: Any?, cycles: Int = 3, running: Boolean = true): State<Float> {
+    val phase = remember(key) { Animatable(0f) }
+    LaunchedEffect(key, running) {
+        // Something composed but not on screen (the drawer, kept warm behind the pages) waits.
+        if (!running) return@LaunchedEffect
+        repeat(cycles) {
+            phase.snapTo(0f)
+            phase.animateTo(1f, tween(CycleMillis, easing = LinearEasing))
+        }
+    }
+    return phase.asState()
+}
+
+/**
+ * A finger swiping across rather than up: paging sideways, which is not a gesture anyone can
+ * rebind, so it has no [GestureTrigger] of its own.
+ */
+@OptIn(ExperimentalComposeUiApi::class)
+@Composable
+fun SidewaysGlyph(phase: State<Float>, modifier: Modifier = Modifier) {
+    val colors = NulisTheme.colors
+    val dotted = NulisTheme.look.lineStyle == LineStyle.DOTTED
+    Canvas(modifier.size(28.dp).graphicsLayer { }.preferredFrameRate(DemoFrameRate)) {
+        val p = phase.value
+        val travel = (p / 0.72f).coerceIn(0f, 1f)
+        val eased = travel * travel * (3f - 2f * travel)
+        val x = Bottom + (Top - Bottom) * eased
+        val alpha = when {
+            p < 0.06f -> p / 0.06f
+            travel >= 1f -> (1f - (p - 0.72f) / 0.16f).coerceIn(0f, 1f)
+            else -> 1f
+        }
+        if (dotted) {
+            repeat(5) { i -> drawCircle(colors.tertiary, 1.1.dp.toPx(), at(Top + (Bottom - Top) * i / 4f, 0.5f)) }
+        } else {
+            drawLine(colors.tertiary, at(Top, 0.5f), at(Bottom, 0.5f), 1.dp.toPx())
+        }
+        drawCircle(colors.onBackground, 3.4.dp.toPx(), at(x, 0.5f), alpha = alpha)
+    }
 }
 
 /**
