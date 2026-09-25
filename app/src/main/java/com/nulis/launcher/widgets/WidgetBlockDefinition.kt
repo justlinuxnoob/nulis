@@ -9,6 +9,7 @@ import android.graphics.ColorMatrix
 import android.graphics.ColorMatrixColorFilter
 import android.graphics.Paint
 import android.view.View
+import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
@@ -28,7 +29,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.nulis.launcher.blocks.Block
@@ -93,7 +93,7 @@ object WidgetBlockDefinition : BlockDefinition {
     @Composable
     override fun Options(block: Block, context: BlockContext, onUpdate: (Block) -> Unit) {
         val host = LocalWidgetHost.current
-        val activity = LocalContext.current as? Activity
+        val activity = LocalActivity.current
         val picker = rememberWidgetPicker(block, onUpdate)
         PillButton(
             text = if (widgetId(block) == WidgetHost.INVALID) "Choose a widget" else "Choose another",
@@ -146,8 +146,7 @@ object WidgetBlockDefinition : BlockDefinition {
     @Composable
     private fun rememberWidgetPicker(block: Block, onUpdate: (Block) -> Unit): () -> Unit {
         val host = LocalWidgetHost.current
-        val context = LocalContext.current
-        val activity = context as? Activity
+        val activity = LocalActivity.current
         // Saveable: the picker can outlive this process, and its answer names the id anyway.
         var pending by rememberSaveable { mutableIntStateOf(WidgetHost.INVALID) }
 
