@@ -45,6 +45,11 @@ data class ScreenTimeState(
     val totalMinutes: Int = 0,
     /** Every app with foreground time today, most used first. */
     val apps: List<AppUsage> = emptyList(),
+    /**
+     * How long the screen has been on and unlocked today, home screen and all: the number
+     * Digital Wellbeing reports. Null where the phone does not record it (before Android 9).
+     */
+    val screenOnMinutes: Int? = null,
 ) {
     /** Per-package minutes for app lists; the grouped row has no package and is left out. */
     val minutesByPackage: Map<String, Int> get() = apps.filterNot { it.isOther }.associate { it.packageName to it.minutes }
@@ -74,23 +79,28 @@ class ScreenTimeRepository(private val context: Context) {
         val manager = context.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
         val now = System.currentTimeMillis()
         val start = LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
-        val events = manager.queryEvents(start, now)
+        // A few hours before midnight as well, and only so that whatever was already open - and
+        // whether the screen was on - at the start of the day is known. Nothing before [start]
+        // is ever counted.
+        val events = manager.queryEvents(start - LOOKBACK_MILLIS, now)
         val event = UsageEvents.Event()
         val resumedAt = HashMap<String, Long>()
         val total = HashMap<String, Long>()
+        val screen = ArrayList<ScreenEvent>()
         while (events.hasNextEvent()) {
             events.getNextEvent(event)
+            screenEventOf(event.eventType, event.timeStamp)?.let(screen::add)
             val pkg = event.packageName ?: continue
             when (event.eventType) {
                 UsageEvents.Event.ACTIVITY_RESUMED -> resumedAt[pkg] = event.timeStamp
                 UsageEvents.Event.ACTIVITY_PAUSED, UsageEvents.Event.ACTIVITY_STOPPED -> {
-                    val from = resumedAt.remove(pkg) ?: continue
+                    val from = (resumedAt.remove(pkg) ?: continue).coerceAtLeast(start)
                     total[pkg] = (total[pkg] ?: 0L) + (event.timeStamp - from).coerceAtLeast(0L)
                 }
             }
         }
         // Whatever is still in front counts up to now.
-        resumedAt.forEach { (pkg, from) -> total[pkg] = (total[pkg] ?: 0L) + (now - from).coerceAtLeast(0L) }
+        resumedAt.forEach { (pkg, from) -> total[pkg] = (total[pkg] ?: 0L) + (now - from.coerceAtLeast(start)).coerceAtLeast(0L) }
         excluded().forEach(total::remove)
         // Only apps you can actually open get their own row; everything left over is summed into
         // one "Other" row, never a package name.
@@ -104,7 +114,8 @@ class ScreenTimeRepository(private val context: Context) {
         }
         if (otherMinutes > 0) named += AppUsage("", AppUsage.OTHER, otherMinutes)
         val apps = named.sortedByDescending { it.minutes }
-        ScreenTimeState(granted = true, totalMinutes = apps.sumOf { it.minutes }, apps = apps)
+        val screenOn = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) (screenOnMillis(screen, start, now) / 60_000L).toInt() else null
+        ScreenTimeState(granted = true, totalMinutes = apps.sumOf { it.minutes }, apps = apps, screenOnMinutes = screenOn)
     }
 
     /**
@@ -190,7 +201,23 @@ class ScreenTimeRepository(private val context: Context) {
         pm.getApplicationInfo(packageName, 0).loadLabel(pm).toString().takeIf { it.isNotBlank() }
     }.getOrNull() ?: AppUsage.OTHER
 
+    /** The screen and lock-screen events Android 9 and up record among the app events. */
+    private fun screenEventOf(type: Int, at: Long): ScreenEvent? {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) return null
+        val kind = when (type) {
+            UsageEvents.Event.SCREEN_INTERACTIVE -> ScreenEvent.Kind.SCREEN_ON
+            UsageEvents.Event.SCREEN_NON_INTERACTIVE -> ScreenEvent.Kind.SCREEN_OFF
+            UsageEvents.Event.KEYGUARD_SHOWN -> ScreenEvent.Kind.LOCKED
+            UsageEvents.Event.KEYGUARD_HIDDEN -> ScreenEvent.Kind.UNLOCKED
+            else -> return null
+        }
+        return ScreenEvent(kind, at)
+    }
+
     private companion object {
+        /** How far before midnight the event stream is read to learn how the day began. */
+        const val LOOKBACK_MILLIS = 12 * 60 * 60 * 1000L
+
         /**
          * The shade, quick settings and recents. Named rather than resolved: there is no intent
          * that means "the system UI", and these are the package names every Android build uses.

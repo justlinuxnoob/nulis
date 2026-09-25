@@ -120,6 +120,7 @@ import com.nulis.launcher.ui.theme.NulisHaptics
 import com.nulis.launcher.ui.theme.LineStyle
 import com.nulis.launcher.ui.theme.NulisMotion
 import com.nulis.launcher.widgets.LocalWidgetHost
+import com.nulis.launcher.widgets.WidgetBlockDefinition
 import com.nulis.launcher.ui.theme.ColorTheme
 import com.nulis.launcher.ui.theme.Fonts
 import com.nulis.launcher.ui.theme.Looks
@@ -327,6 +328,28 @@ fun LauncherRoute(
             delay(NulisMotion.quick.toLong() * 2)
             viewModel.releaseUnusedWidgetIds(widgetHost)
         }
+    }
+    // A widget's setup screen has answered: place it on the block it was chosen for, or give its
+    // id back. By block id rather than through the sheet it was chosen in, because the sheet -
+    // and after a restart, the whole process - may be gone by the time the answer comes. Waits
+    // until the pages are loaded, so a block that is on one is always found.
+    val setupOutcome = widgetHost?.setupOutcome?.collectAsStateWithLifecycle()?.value
+    LaunchedEffect(setupOutcome, layouts, pagesConfig) {
+        val outcome = setupOutcome ?: return@LaunchedEffect
+        val host = widgetHost ?: return@LaunchedEffect
+        val pending = outcome.pending
+        val pageId = viewModel.pageIdOf(pending.blockId)
+        val block = pageId?.let { layouts[it] }?.block(pending.blockId)
+        if (block == null && pagesConfig.ids.any { layouts[it] == null }) return@LaunchedEffect
+        when {
+            pending.reconfigure -> Unit
+            outcome.placed && pageId != null && block != null -> {
+                viewModel.actionsFor(pageId).update(WidgetBlockDefinition.withWidgetId(block, pending.widgetId))
+                if (pending.previousId != pending.widgetId) host.forget(pending.previousId)
+            }
+            else -> host.forget(pending.widgetId)
+        }
+        host.consume(outcome)
     }
     // And the stale id itself goes, so the editor does not spring open later if that page
     // happens to come back.

@@ -49,14 +49,18 @@ import org.robolectric.annotation.GraphicsMode
 @RunWith(ParameterizedRobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [36], qualifiers = "w400dp-h2400dp-xxhdpi")
-class BlockGallery(private val lookId: String, private val theme: ColorTheme) : ScreenshotTest() {
+class BlockGallery(private val lookId: String, private val theme: ColorTheme, private val empty: Boolean) : ScreenshotTest() {
 
     companion object {
+        /**
+         * Both looks on black and white with demo data, plus Dot on black with nothing at all:
+         * no permissions, no notes, nothing playing - the state every block is first seen in.
+         */
         @JvmStatic
-        @ParameterizedRobolectricTestRunner.Parameters(name = "{0}-{1}")
+        @ParameterizedRobolectricTestRunner.Parameters(name = "{0}-{1}-empty={2}")
         fun params(): List<Array<Any>> = listOf("dot", "clean").flatMap { look ->
-            listOf(ColorTheme.BLACK, ColorTheme.WHITE).map { arrayOf<Any>(look, it) }
-        }
+            listOf(ColorTheme.BLACK, ColorTheme.WHITE).map { arrayOf<Any>(look, it, false) }
+        } + listOf(arrayOf<Any>("dot", ColorTheme.BLACK, true))
 
         /** A cell on a 360 x 800 dp phone: 312 dp across six columns, about 60 dp a row. */
         val CellW = 52.dp
@@ -68,7 +72,7 @@ class BlockGallery(private val lookId: String, private val theme: ColorTheme) : 
     @Test
     fun gallery() {
         compose.mainClock.autoAdvance = false
-        val context = DemoData.context
+        val context = if (empty) DemoData.emptyContext else DemoData.context
         ActivityScenario.launch(ComponentActivity::class.java).use { scenario ->
             BlockRegistry.definitions.forEach { definition ->
                 scenario.onActivity { activity ->
@@ -110,7 +114,7 @@ class BlockGallery(private val lookId: String, private val theme: ColorTheme) : 
                     }
                 }
                 settle(800)
-                compose.onRoot().captureRoboImage("build/screenshots/$group/${definition.type}-$lookId-${theme.name.lowercase()}.png")
+                compose.onRoot().captureRoboImage("build/screenshots/$group/${definition.type}-$lookId-${theme.name.lowercase()}${if (empty) "-empty" else ""}.png")
             }
         }
     }

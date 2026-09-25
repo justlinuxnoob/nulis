@@ -11,6 +11,9 @@ import android.content.Context
 import android.os.Build
 import android.os.Bundle
 import androidx.compose.runtime.staticCompositionLocalOf
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 /**
  * The one [AppWidgetHost] Nulis has.
@@ -80,10 +83,15 @@ class WidgetHost(context: Context) {
      * at, so the caller builds it from the store or does not call at all.
      */
     fun releaseUnreferenced(live: Set<Int>): Int {
-        val stale = (knownIds() ?: return 0) - live
+        // An id half-way through the picker or its setup screen is on no page yet, and is the one
+        // thing this must not hand back.
+        val stale = staleIds(knownIds() ?: return 0, live)
         stale.forEach { forget(it) }
         return stale.size
     }
+
+    /** Of the ids the host holds, the ones nothing can reach: not on a page, not in flight. */
+    fun staleIds(known: Set<Int>, live: Set<Int>): Set<Int> = known - live - inFlight
 
     /** What is bound to [widgetId], or null when nothing is - an uninstalled app, a stale id. */
     fun providerFor(widgetId: Int): AppWidgetProviderInfo? =
@@ -125,13 +133,111 @@ class WidgetHost(context: Context) {
         .putParcelableArrayListExtra(AppWidgetManager.EXTRA_CUSTOM_INFO, ArrayList())
         .putParcelableArrayListExtra(AppWidgetManager.EXTRA_CUSTOM_EXTRAS, ArrayList())
 
-    /** The provider's own setup screen, for the widgets that have one. Null when it has none. */
-    fun configureIntent(activity: Activity, widgetId: Int, info: AppWidgetProviderInfo): Boolean {
+    /**
+     * Ids between being allocated and landing on a page: in the system picker, or in the
+     * provider's setup screen. Kept in the activity's saved state, because Android is free to
+     * end this process while somebody is in either, and an id the sweep did not know about would
+     * be handed back underneath a widget that is about to be placed.
+     */
+    private val inFlight = mutableSetOf<Int>()
+
+    fun hold(widgetId: Int) {
+        if (widgetId != INVALID) inFlight += widgetId
+    }
+
+    fun release(widgetId: Int) {
+        inFlight -= widgetId
+    }
+
+    /** A widget waiting on its own setup screen, and the block it is for. */
+    data class PendingSetup(
+        val widgetId: Int,
+        val blockId: String,
+        /** The widget this one replaces, released once the new one is in; [INVALID] for none. */
+        val previousId: Int,
+        /** Changing the settings of a widget already on the page, rather than placing one. */
+        val reconfigure: Boolean,
+    )
+
+    /** What came of a setup screen: the widget goes on the page, or it does not. */
+    data class SetupOutcome(val pending: PendingSetup, val placed: Boolean)
+
+    private var pendingSetup: PendingSetup? = null
+    private val outcomes = MutableStateFlow<SetupOutcome?>(null)
+
+    /** The last setup screen's outcome until somebody [consume]s it; survives a restart. */
+    val setupOutcome: StateFlow<SetupOutcome?> = outcomes.asStateFlow()
+
+    fun consume(outcome: SetupOutcome) {
+        if (outcomes.value == outcome) outcomes.value = null
+        if (!outcome.pending.reconfigure) release(outcome.pending.widgetId)
+    }
+
+    /**
+     * True when [info] asks to be set up before it is placed.
+     *
+     * Android 12 lets a provider say its setup screen is optional; those are placed with their
+     * defaults straight away, the way every other launcher does, and can be set up later from
+     * the block's options.
+     */
+    fun needsSetup(info: AppWidgetProviderInfo): Boolean {
         if (info.configure == null) return false
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+            info.widgetFeatures and AppWidgetProviderInfo.WIDGET_FEATURE_CONFIGURATION_OPTIONAL != 0
+        ) {
+            return false
+        }
+        return true
+    }
+
+    /** True when the widget on the page can be set up again, and says so. */
+    fun canReconfigure(info: AppWidgetProviderInfo?): Boolean =
+        info?.configure != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.P &&
+            info.widgetFeatures and AppWidgetProviderInfo.WIDGET_FEATURE_RECONFIGURABLE != 0
+
+    /**
+     * Opens the provider's own setup screen through the host, which is the one way that works
+     * for every widget: a setup activity that is not exported, or one that belongs to a work
+     * profile, cannot be started by an ordinary intent from Nulis, and used to fall through to
+     * placing the widget unconfigured. The answer comes back to [MainActivity] and from there to
+     * [onSetupResult]. False when the setup screen could not be opened at all.
+     */
+    fun startSetup(activity: Activity, pending: PendingSetup): Boolean {
+        pendingSetup = pending
+        hold(pending.widgetId)
         return runCatching {
-            host.startAppWidgetConfigureActivityForResult(activity, widgetId, 0, REQUEST_CONFIGURE, null)
+            host.startAppWidgetConfigureActivityForResult(activity, pending.widgetId, 0, REQUEST_CONFIGURE, null)
             true
-        }.getOrDefault(false)
+        }.getOrElse {
+            pendingSetup = null
+            if (!pending.reconfigure) release(pending.widgetId)
+            false
+        }
+    }
+
+    /** The setup screen has answered. Cancelled means the widget is not wanted. */
+    fun onSetupResult(resultCode: Int) {
+        val pending = pendingSetup ?: return
+        pendingSetup = null
+        outcomes.value = SetupOutcome(pending, placed = resultCode == Activity.RESULT_OK)
+    }
+
+    fun saveState(out: Bundle) {
+        out.putIntArray(STATE_IN_FLIGHT, inFlight.toIntArray())
+        pendingSetup?.let {
+            out.putIntArray(STATE_SETUP_IDS, intArrayOf(it.widgetId, it.previousId, if (it.reconfigure) 1 else 0))
+            out.putString(STATE_SETUP_BLOCK, it.blockId)
+        }
+    }
+
+    fun restoreState(state: Bundle?) {
+        state ?: return
+        state.getIntArray(STATE_IN_FLIGHT)?.forEach { inFlight += it }
+        val ids = state.getIntArray(STATE_SETUP_IDS)
+        val block = state.getString(STATE_SETUP_BLOCK)
+        if (ids != null && ids.size == 3 && block != null) {
+            pendingSetup = PendingSetup(ids[0], block, ids[1], reconfigure = ids[2] == 1)
+        }
     }
 
     companion object {
@@ -140,6 +246,10 @@ class WidgetHost(context: Context) {
 
         const val INVALID = AppWidgetManager.INVALID_APPWIDGET_ID
         const val REQUEST_CONFIGURE = 0x4E01
+
+        private const val STATE_IN_FLIGHT = "nulis.widgets.inFlight"
+        private const val STATE_SETUP_IDS = "nulis.widgets.setupIds"
+        private const val STATE_SETUP_BLOCK = "nulis.widgets.setupBlock"
     }
 }
 

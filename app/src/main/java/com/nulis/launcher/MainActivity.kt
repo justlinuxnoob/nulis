@@ -166,6 +166,9 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // A widget half-way through the picker or its own setup screen when Android ended the
+        // process: its id, and which block it was for.
+        widgetHost.restoreState(savedInstanceState)
         applyWindow(initialPreferences)
         preferHighestRefreshRate()
 
@@ -205,6 +208,26 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        widgetHost.saveState(outState)
+    }
+
+    /**
+     * A widget's own setup screen answering. It is started through the widget host, which is the
+     * only way that reaches a setup screen the provider did not export, and the host can only
+     * report back the old way.
+     */
+    @Deprecated("The widget host starts its setup screens with startActivityForResult.")
+    @Suppress("DEPRECATION")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        if (requestCode == WidgetHost.REQUEST_CONFIGURE) {
+            widgetHost.onSetupResult(resultCode)
+            return
+        }
+        super.onActivityResult(requestCode, resultCode, data)
     }
 
     override fun onDestroy() {

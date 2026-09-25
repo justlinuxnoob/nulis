@@ -32,6 +32,14 @@ object DemoData {
     val homeApps: List<AppInfo> = listOf("Phone", "Messages", "Camera", "Browser", "Photos", "Clock")
         .map { label -> apps.first { it.label == label } }
 
+    /** A phone on its first day: apps, and nothing else granted, written or playing. */
+    val emptyContext: BlockContext = BlockContext(
+        time = now,
+        apps = apps,
+        homeApps = homeApps,
+        onLaunchApp = { _, _ -> },
+    )
+
     private fun pkg(label: String) = apps.first { it.label == label }.packageName
 
     val context: BlockContext = BlockContext(
