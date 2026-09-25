@@ -63,6 +63,7 @@ fun BlockPreviewCard(
         NulisCard(
             modifier = Modifier.fillMaxWidth(),
             selected = selected,
+            label = label,
             shape = NulisShapes.tile,
             contentPadding = 12.dp,
             onClick = pick,

@@ -30,7 +30,7 @@ enum class SettingsTarget(val title: String, val keywords: List<String>) {
     CATEGORIES("Categories", listOf("category", "categories", "folder", "folders", "group", "groups")),
     DRAWER("Drawer", listOf("drawer", "recent", "hide", "unused", "work", "profile")),
     GESTURES("Gestures", listOf("gesture", "swipe", "tap", "long press", "double tap")),
-    DISPLAY("Display", listOf("status bar", "wallpaper", "dim", "minutes", "screen time")),
+    DISPLAY("Display", listOf("status bar", "wallpaper", "dim", "minutes", "screen time", "contrast", "motion", "accessibility")),
     WELLBEING("Wellbeing", listOf("wellbeing", "pause", "limit", "focus", "breathing", "summary", "mindful")),
     BACKUP("Backup", listOf("backup", "export", "import", "restore", "reset")),
     SOUND("Sound", listOf("sound", "click", "tick", "audio", "volume")),

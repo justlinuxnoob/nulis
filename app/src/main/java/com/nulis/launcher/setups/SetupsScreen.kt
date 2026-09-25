@@ -194,6 +194,7 @@ private fun SetupCard(
         NulisCard(
             modifier = Modifier.fillMaxWidth(),
             selected = selected,
+            label = setup.name,
             shape = NulisShapes.tile,
             contentPadding = 8.dp,
             onClick = {

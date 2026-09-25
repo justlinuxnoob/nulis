@@ -82,6 +82,7 @@ fun PaletteRow(
                 NulisCard(
                     modifier = Modifier.fillMaxWidth(),
                     selected = palette.id == current?.id,
+                    label = palette.name,
                     shape = NulisShapes.tile,
                     contentPadding = 8.dp,
                     onClick = {

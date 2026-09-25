@@ -525,6 +525,10 @@ class LauncherViewModel(
         viewModelScope.launch { uiPreferencesRepository.setReducedMotion(on) }
     }
 
+    fun setHighContrast(on: Boolean) {
+        viewModelScope.launch { uiPreferencesRepository.setHighContrast(on) }
+    }
+
     fun setCustomAccent(argb: Int?) {
         viewModelScope.launch { uiPreferencesRepository.setCustomAccent(argb) }
     }

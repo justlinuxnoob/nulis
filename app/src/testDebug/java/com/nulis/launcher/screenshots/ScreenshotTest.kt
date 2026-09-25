@@ -81,9 +81,12 @@ abstract class ScreenshotTest {
      * package manager answer on background threads that the virtual clock does not drive.
      */
     /** Taps [text] if it is on screen at all; for hints that only show the first time. */
-    protected fun tapIfShown(text: String) {
-        val nodes = compose.onAllNodes(hasText(text, ignoreCase = true)).fetchSemanticsNodes()
-        if (nodes.isNotEmpty()) tap(text)
+    protected fun tapIfShown(text: String, substring: Boolean = false) {
+        val matcher = hasText(text, substring = substring, ignoreCase = true)
+        if (compose.onAllNodes(matcher).fetchSemanticsNodes().isNotEmpty()) {
+            compose.onAllNodes(matcher)[0].performClick()
+            settle()
+        }
     }
 
     protected fun settle(ms: Long = 600) {

@@ -96,6 +96,7 @@ private fun <T> ChoiceRow(
                 NulisCard(
                     modifier = Modifier.fillMaxWidth(),
                     selected = isSelected,
+                    label = label(option),
                     shape = NulisShapes.tile,
                     contentPadding = 8.dp,
                     onClick = {

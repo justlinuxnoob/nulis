@@ -48,6 +48,7 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.lerp
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.zIndex
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
@@ -124,6 +125,7 @@ import com.nulis.launcher.widgets.WidgetBlockDefinition
 import com.nulis.launcher.ui.theme.ColorTheme
 import com.nulis.launcher.ui.theme.Fonts
 import com.nulis.launcher.ui.theme.Looks
+import com.nulis.launcher.ui.theme.NulisSpacing
 import com.nulis.launcher.ui.theme.NulisTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -628,12 +630,20 @@ fun LauncherRoute(
             .outsideSystemGestures()
             .onSizeChanged { drawer.travelPx = it.height.toFloat().coerceAtLeast(1f) },
     ) {
+        // A screen reader walks every node on screen, including the ones under an opaque
+        // surface. While something covers the pages, the pages say nothing - otherwise swiping
+        // through Settings wanders off into the clock and the apps behind it. Only settled
+        // states count, so none of this happens on the drawer's way up or down.
+        val pagesCovered = !preferences.onboarded || editMode || drawer.settledShown || settingsOpen ||
+            layoutsOpen || pagesOpen || setupsOpen || backupOpen || weekOpen || wellbeingOpen ||
+            addBlockOpen || screenRequest != null || pending != null
         HorizontalPager(
             state = pager,
             userScrollEnabled = !editMode,
             beyondViewportPageCount = pageCount,
             modifier = Modifier
                 .fillMaxSize()
+                .then(if (pagesCovered) Modifier.clearAndSetSemantics { } else Modifier)
                 .graphicsLayer {
                     val p = drawer.progress
                     val scale = lerp(1f, NulisMotion.homeBehindDrawerScale, p)
@@ -712,7 +722,10 @@ fun LauncherRoute(
         }
         HomeHint(
             line = hintLine?.takeIf { onHomePage && !editMode && !drawerOpen && resumed },
-            modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 2.dp),
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .navigationBarsPadding()
+                .padding(start = NulisSpacing.screenMargin, end = NulisSpacing.screenMargin, bottom = 2.dp),
         )
 
         // The editor is the page: the same blocks, the same data, one step back. It sits over
@@ -836,6 +849,7 @@ fun LauncherRoute(
                         onSound = viewModel::setSound,
                         onSoundVolume = viewModel::setSoundVolume,
                         onReducedMotion = viewModel::setReducedMotion,
+                        onHighContrast = viewModel::setHighContrast,
                         onDisplayFont = viewModel::setDisplayFont,
                         onBodyFont = viewModel::setBodyFont,
                         onTextScale = viewModel::setTextScale,

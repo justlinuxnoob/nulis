@@ -24,6 +24,7 @@ import com.nulis.launcher.ui.theme.Looks
 import com.nulis.launcher.ui.theme.NulisColors
 import com.nulis.launcher.ui.theme.NulisFont
 import com.nulis.launcher.ui.theme.colorsFor
+import com.nulis.launcher.ui.theme.withHigherContrast
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.first
@@ -102,8 +103,11 @@ data class UiPreferences(
     val soundVolume: Float = 0.4f,
     /** Calms springs and stills the animated blocks. */
     val reducedMotion: Boolean = false,
+    /** Captions, secondary text and hairlines turned up to WCAG body-text contrast. */
+    val highContrast: Boolean = false,
 ) {
     val colors: NulisColors get() = colorsFor(colorTheme, Color(customBackground), customInk?.let { Color(it) }, customAccent?.let { Color(it) })
+        .let { if (highContrast) it.withHigherContrast() else it }
     val displayFont: NulisFont? get() = Fonts.byId(displayFontId)
     val bodyFont: NulisFont? get() = Fonts.byId(bodyFontId)
 }
@@ -214,6 +218,10 @@ class UiPreferencesRepository(context: Context) {
 
     suspend fun setReducedMotion(on: Boolean) {
         dataStore.edit { it[KEY_REDUCED_MOTION] = on }
+    }
+
+    suspend fun setHighContrast(on: Boolean) {
+        dataStore.edit { it[KEY_HIGH_CONTRAST] = on }
     }
 
     suspend fun setOnboarded(done: Boolean) {
@@ -431,6 +439,7 @@ class UiPreferencesRepository(context: Context) {
             sound = this[KEY_SOUND] ?: defaults.sound,
             soundVolume = (this[KEY_SOUND_VOLUME] ?: defaults.soundVolume).coerceIn(0f, 1f),
             reducedMotion = this[KEY_REDUCED_MOTION] ?: defaults.reducedMotion,
+            highContrast = this[KEY_HIGH_CONTRAST] ?: defaults.highContrast,
         )
     }
 
@@ -466,5 +475,6 @@ class UiPreferencesRepository(context: Context) {
         val KEY_SOUND = booleanPreferencesKey("sound")
         val KEY_SOUND_VOLUME = floatPreferencesKey("sound_volume")
         val KEY_REDUCED_MOTION = booleanPreferencesKey("reduced_motion")
+        val KEY_HIGH_CONTRAST = booleanPreferencesKey("high_contrast")
     }
 }

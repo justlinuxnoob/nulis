@@ -140,6 +140,8 @@
     <string name="settings_sound_volume">Volume</string>
     <string name="settings_reduced_motion">Reduced motion</string>
     <string name="settings_reduced_motion_hint">Calmer springs, still animated blocks</string>
+    <string name="settings_high_contrast">Higher contrast</string>
+    <string name="settings_high_contrast_hint">Brighter captions, text and lines, for bright light or tired eyes</string>
     <string name="settings_backup">Backup</string>
     <string name="settings_backup_row">Export, import, reset</string>
     <string name="settings_backup_hint">One file with everything in it</string>

@@ -2,8 +2,9 @@
 // Copyright (C) 2026 The Nulis Launcher authors
 package com.nulis.launcher.onboarding
 
-import android.annotation.SuppressLint
 import android.Manifest
+import android.annotation.SuppressLint
+import android.app.role.RoleManager
 import android.content.Context
 import android.content.Intent
 import android.os.Build
@@ -19,9 +20,13 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -29,6 +34,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
@@ -37,11 +43,10 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.Text
-import android.app.role.RoleManager
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
@@ -52,8 +57,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -61,25 +64,18 @@ import androidx.compose.ui.unit.dp
 import com.nulis.launcher.apps.AppInfo
 import com.nulis.launcher.blocks.BlockContext
 import com.nulis.launcher.blocks.PageIds
-import com.nulis.launcher.home.PageMiniature
-import com.nulis.launcher.layout.DefaultLayouts
-import com.nulis.launcher.layout.LayoutPreset
 import com.nulis.launcher.gestures.GestureGlyph
 import com.nulis.launcher.gestures.GestureTrigger
 import com.nulis.launcher.gestures.SidewaysGlyph
 import com.nulis.launcher.gestures.rememberGesturePhase
+import com.nulis.launcher.home.PageMiniature
 import com.nulis.launcher.icons.AppGlyph
 import com.nulis.launcher.icons.IconMode
 import com.nulis.launcher.icons.IconStyle
-import com.nulis.launcher.ui.theme.ColorTheme
-import com.nulis.launcher.ui.theme.LocalLook
-import com.nulis.launcher.ui.theme.LocalNulisColors
-import com.nulis.launcher.ui.theme.LocalNulisTypography
-import com.nulis.launcher.ui.theme.Look
-import com.nulis.launcher.ui.theme.Looks
-import com.nulis.launcher.ui.theme.NulisTypography
-import com.nulis.launcher.ui.theme.colorsFor
+import com.nulis.launcher.layout.DefaultLayouts
+import com.nulis.launcher.layout.LayoutPreset
 import com.nulis.launcher.ui.components.Caption
+import com.nulis.launcher.ui.components.FitWidth
 import com.nulis.launcher.ui.components.Hairline
 import com.nulis.launcher.ui.components.ListRow
 import com.nulis.launcher.ui.components.NulisCard
@@ -88,11 +84,19 @@ import com.nulis.launcher.ui.components.PillButton
 import com.nulis.launcher.ui.components.PillTone
 import com.nulis.launcher.ui.components.SectionLabel
 import com.nulis.launcher.ui.components.fadeTop
+import com.nulis.launcher.ui.theme.ColorTheme
+import com.nulis.launcher.ui.theme.LocalLook
+import com.nulis.launcher.ui.theme.LocalNulisColors
+import com.nulis.launcher.ui.theme.LocalNulisTypography
+import com.nulis.launcher.ui.theme.Look
+import com.nulis.launcher.ui.theme.Looks
 import com.nulis.launcher.ui.theme.NulisHaptics
 import com.nulis.launcher.ui.theme.NulisMotion
 import com.nulis.launcher.ui.theme.NulisShapes
 import com.nulis.launcher.ui.theme.NulisSpacing
 import com.nulis.launcher.ui.theme.NulisTheme
+import com.nulis.launcher.ui.theme.NulisTypography
+import com.nulis.launcher.ui.theme.colorsFor
 
 /** What onboarding can do, wired to the view model by the route. */
 class OnboardingActions(
@@ -268,23 +272,43 @@ private fun StepFrame(
     }
 }
 
+/**
+ * [content] centred in the space above the buttons while it fits, and scrolling once it does
+ * not. At the largest font scale on a small phone the welcome text alone is taller than the
+ * screen, and it used to push the buttons off the bottom - so the one way forward was gone.
+ */
+@Composable
+private fun ColumnScope.CentredScroll(content: @Composable ColumnScope.() -> Unit) {
+    BoxWithConstraints(Modifier.fillMaxWidth().weight(1f)) {
+        val room = maxHeight
+        Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {
+            Column(
+                Modifier.fillMaxWidth().heightIn(min = room),
+                verticalArrangement = Arrangement.Center,
+                content = content,
+            )
+        }
+    }
+}
+
 @Composable
 private fun Welcome(onNext: () -> Unit, onSkip: () -> Unit) {
     val colors = NulisTheme.colors
     Column(Modifier.fillMaxSize()) {
-        Spacer(Modifier.weight(1f))
-        Text("Nulis", style = NulisTheme.type.displayXl, color = colors.onBackground)
-        Spacer(Modifier.height(16.dp))
-        Text(
-            "A home screen made of blocks. Pick a layout, pick a look, pick a few apps; change any of it later by long-pressing.",
-            style = NulisTheme.type.bodyL,
-            color = colors.secondary,
-        )
-        Spacer(Modifier.height(24.dp))
-        Hairline()
-        Spacer(Modifier.height(16.dp))
-        Caption("Nothing here leaves your phone. Nulis has no internet permission.", lines = 2)
-        Spacer(Modifier.weight(1f))
+        CentredScroll {
+            // The name is one word; at a large font scale it shrinks rather than breaking in two.
+            FitWidth { Text("Nulis", style = NulisTheme.type.displayXl, color = colors.onBackground, softWrap = false) }
+            Spacer(Modifier.height(16.dp))
+            Text(
+                "A home screen made of blocks. Pick a layout, pick a look, pick a few apps; change any of it later by long-pressing.",
+                style = NulisTheme.type.bodyL,
+                color = colors.secondary,
+            )
+            Spacer(Modifier.height(24.dp))
+            Hairline()
+            Spacer(Modifier.height(16.dp))
+            Caption("Nothing here leaves your phone. Nulis has no internet permission.", lines = 2)
+        }
         Row(Modifier.fillMaxWidth().padding(bottom = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             PillButton(text = "Skip setup", onClick = onSkip, modifier = Modifier.weight(1f))
             PillButton(text = "Set up", onClick = onNext, tone = PillTone.Primary, modifier = Modifier.weight(1f))
@@ -323,6 +347,7 @@ private fun LayoutStep(
                             // A fresh phone is already wearing the first layout, so it is marked
                             // as chosen rather than leaving a row of cards with nothing picked.
                             selected = preset.id == (appliedId ?: DefaultLayouts.first.id),
+                            label = preset.name,
                             shape = NulisShapes.tile,
                             contentPadding = 8.dp,
                             onClick = {
@@ -376,6 +401,7 @@ private fun LookStep(
                         NulisCard(
                             modifier = Modifier.fillMaxWidth(),
                             selected = selected,
+                            label = "${look.label}, ${if (colors == ColorTheme.BLACK) "dark" else "light"}",
                             shape = NulisShapes.tile,
                             contentPadding = 8.dp,
                             onClick = {
@@ -539,17 +565,17 @@ private fun Done(onFinish: () -> Unit) {
     // little glyph Settings uses for gestures, so what a hand is meant to do is seen, not read.
     val phase = rememberGesturePhase()
     Column(Modifier.fillMaxSize()) {
-        Spacer(Modifier.weight(1f))
-        Text("All set", style = NulisTheme.type.displayL, color = colors.onBackground)
-        Spacer(Modifier.height(8.dp))
-        Text("Three things to know. The home screen reminds you of each until you have tried it.", style = NulisTheme.type.bodyM, color = colors.secondary)
-        Spacer(Modifier.height(24.dp))
-        GestureLine(title = "Swipe up", body = "Every app, and a search that also finds notes and settings", glyph = { GestureGlyph(GestureTrigger.SWIPE_UP, phase) })
-        GestureLine(title = "Hold anywhere", body = "Change the page: move, resize, add and remove blocks", glyph = { GestureGlyph(GestureTrigger.LONG_PRESS, phase) })
-        GestureLine(title = "Swipe sideways", body = "Your other pages. Add more, up to five", glyph = { SidewaysGlyph(phase) }, divider = false)
-        Spacer(Modifier.height(16.dp))
-        Caption("Settings are in the drawer, under Nulis Settings", lines = 2)
-        Spacer(Modifier.weight(1f))
+        CentredScroll {
+            Text("All set", style = NulisTheme.type.displayL, color = colors.onBackground)
+            Spacer(Modifier.height(8.dp))
+            Text("Three things to know. The home screen reminds you of each until you have tried it.", style = NulisTheme.type.bodyM, color = colors.secondary)
+            Spacer(Modifier.height(24.dp))
+            GestureLine(title = "Swipe up", body = "Every app, and a search that also finds notes and settings", glyph = { GestureGlyph(GestureTrigger.SWIPE_UP, phase) })
+            GestureLine(title = "Hold anywhere", body = "Change the page: move, resize, add and remove blocks", glyph = { GestureGlyph(GestureTrigger.LONG_PRESS, phase) })
+            GestureLine(title = "Swipe sideways", body = "Your other pages. Add more, up to five", glyph = { SidewaysGlyph(phase) }, divider = false)
+            Spacer(Modifier.height(16.dp))
+            Caption("Settings are in the drawer, under Nulis Settings", lines = 2)
+        }
         PillButton(
             text = "Go to my home screen",
             onClick = onFinish,

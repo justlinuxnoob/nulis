@@ -163,6 +163,7 @@ private fun Option(label: String, selected: Boolean, onClick: () -> Unit, previe
         NulisCard(
             modifier = Modifier.fillMaxWidth(),
             selected = selected,
+            label = label,
             shape = NulisShapes.tile,
             contentPadding = 8.dp,
             onClick = {

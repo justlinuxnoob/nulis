@@ -119,7 +119,8 @@ fun HomeHint(line: HintLine?, modifier: Modifier = Modifier) {
                 HintGesture.SIDEWAYS -> SidewaysGlyph(phase, glyph)
             }
             Spacer(Modifier.width(6.dp))
-            Caption(shown.text)
+            // Two lines at most: at the largest font scale one line is not enough to say it.
+            Caption(shown.text, lines = 2)
         }
     }
 }

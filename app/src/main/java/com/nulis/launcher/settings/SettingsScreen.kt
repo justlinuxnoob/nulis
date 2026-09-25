@@ -142,6 +142,7 @@ class SettingsActions(
     val onSound: (Boolean) -> Unit,
     val onSoundVolume: (Float) -> Unit,
     val onReducedMotion: (Boolean) -> Unit,
+    val onHighContrast: (Boolean) -> Unit,
     val onDisplayFont: (String?) -> Unit,
     val onBodyFont: (String?) -> Unit,
     val onTextScale: (Float) -> Unit,
@@ -248,9 +249,11 @@ fun SettingsScreen(
                     )
                 }
                 Spacer(Modifier.height(16.dp))
+                // In the scroll rather than pinned under it: at a large font scale the promise
+                // takes six lines, and pinned it took half the screen from the rows above it.
+                Caption(stringResource(R.string.settings_footer), lines = 2)
+                Spacer(Modifier.height(24.dp))
             }
-            Caption(stringResource(R.string.settings_footer), lines = 2)
-            Spacer(Modifier.height(24.dp))
         }
 
         openSection?.let { section ->
@@ -549,6 +552,12 @@ private fun SettingsSectionScreen(
                             trailing = { NulisToggle(checked = preferences.reducedMotion, onCheckedChange = actions.onReducedMotion) },
                         )
                         ListRow(
+                            title = stringResource(R.string.settings_high_contrast),
+                            subtitle = stringResource(R.string.settings_high_contrast_hint),
+                            onClick = { actions.onHighContrast(!preferences.highContrast) },
+                            trailing = { NulisToggle(checked = preferences.highContrast, onCheckedChange = actions.onHighContrast) },
+                        )
+                        ListRow(
                             title = stringResource(R.string.settings_show_app_usage),
                             subtitle = stringResource(R.string.settings_show_app_usage_hint),
                             onClick = { actions.onShowAppUsage(!preferences.showAppUsage) },
@@ -800,6 +809,7 @@ private fun LookCard(look: Look, selected: Boolean, context: BlockContext, onCli
         NulisCard(
             modifier = Modifier.fillMaxWidth(),
             selected = selected,
+            label = look.label,
             shape = NulisShapes.tile,
             contentPadding = 12.dp,
             onClick = { if (!selected) haptics.performHapticFeedback(NulisHaptics.tick); onClick() },
@@ -832,6 +842,7 @@ private fun ColorThemeCard(label: String, theme: ColorTheme, preferences: UiPref
         NulisCard(
             modifier = Modifier.fillMaxWidth(),
             selected = selected,
+            label = label,
             shape = NulisShapes.tile,
             contentPadding = 12.dp,
             onClick = { if (!selected) haptics.performHapticFeedback(NulisHaptics.tick); actions.onTheme(theme) },

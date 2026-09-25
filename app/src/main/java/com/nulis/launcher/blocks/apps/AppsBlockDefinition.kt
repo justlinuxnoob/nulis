@@ -2,12 +2,10 @@
 // Copyright (C) 2026 The Nulis Launcher authors
 package com.nulis.launcher.blocks.apps
 
-import com.nulis.launcher.blocks.GridSpan
-
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -29,31 +27,33 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import kotlin.math.ceil
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.nulis.launcher.R
 import com.nulis.launcher.apps.AppInfo
 import com.nulis.launcher.blocks.Block
+import com.nulis.launcher.blocks.BlockColumn
 import com.nulis.launcher.blocks.BlockContext
-import com.nulis.launcher.blocks.sampleApp
-import com.nulis.launcher.blocks.sampleApps
 import com.nulis.launcher.blocks.BlockDefinition
+import com.nulis.launcher.blocks.BlockRow
 import com.nulis.launcher.blocks.BlockSize
 import com.nulis.launcher.blocks.BlockStyle
-import com.nulis.launcher.blocks.BlockColumn
-import com.nulis.launcher.blocks.BlockRow
-import com.nulis.launcher.blocks.blockAlign
 import com.nulis.launcher.blocks.GhostDiscs
+import com.nulis.launcher.blocks.GridSpan
+import com.nulis.launcher.blocks.blockAlign
 import com.nulis.launcher.blocks.blockArea
+import com.nulis.launcher.blocks.sampleApp
+import com.nulis.launcher.blocks.sampleApps
 import com.nulis.launcher.blocks.screentime.formatMinutes
 import com.nulis.launcher.icons.AppGlyph
 import com.nulis.launcher.icons.IconMode
@@ -65,6 +65,7 @@ import com.nulis.launcher.ui.components.Caption
 import com.nulis.launcher.ui.components.PillButton
 import com.nulis.launcher.ui.components.pressFeedback
 import com.nulis.launcher.ui.theme.NulisTheme
+import kotlin.math.ceil
 
 /**
  * The apps you chose, stored in the block's settings as newline-separated app ids. The two styles
@@ -387,7 +388,10 @@ object AppsBlockDefinition : BlockDefinition {
         return this
             .onGloballyPositioned { coordinates = it }
             .pressFeedback()
-            .clickable { context.onLaunchApp(app, coordinates?.takeIf { it.isAttached }?.boundsInWindow()) }
+            // An icon on its own says nothing to a screen reader, so the app's name is always
+            // the tile's name, whether or not it is written under it.
+            .semantics { contentDescription = app.label }
+            .clickable(onClickLabel = "Open") { context.onLaunchApp(app, coordinates?.takeIf { it.isAttached }?.boundsInWindow()) }
     }
 
     /** How far an app is faded while a focus session is guarding it. */
