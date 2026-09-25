@@ -220,8 +220,12 @@ class MainActivity : ComponentActivity() {
 
     /** Asks for the fastest display mode at the current resolution so gestures track at 90/120 Hz. */
     private fun preferHighestRefreshRate() {
+        // A context with no display of its own throws rather than returning null; a refresh rate
+        // is a nicety, never a reason not to start.
         @Suppress("DEPRECATION")
-        val display: Display = (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) display else windowManager.defaultDisplay) ?: return
+        val display: Display = runCatching {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) display else windowManager.defaultDisplay
+        }.getOrNull() ?: return
         val current = display.mode
         val fastest = display.supportedModes
             .filter { it.physicalWidth == current.physicalWidth && it.physicalHeight == current.physicalHeight }

@@ -7,6 +7,7 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.roborazzi)
 }
 
 android {
@@ -66,6 +67,28 @@ android {
         )
     }
 
+    testOptions {
+        unitTests {
+            // Robolectric renders the real screens on the JVM for the screenshot tests, and it
+            // needs the merged resources and fonts to do it.
+            isIncludeAndroidResources = true
+            all {
+                it.maxHeapSize = "3g"
+                // The screenshot tours (src/testDebug) draw with the real renderer. Images are only
+                // written by `./gradlew recordRoborazziDebug`; a plain run still drives every
+                // screen, so a crash in one still fails the build.
+                it.systemProperty("robolectric.pixelCopyRenderMode", "hardware")
+                // Android 16's framework reaches into FileDescriptor internals, which Robolectric
+                // can only intercept on a JDK that lets it in.
+                it.jvmArgs(
+                    "--add-exports=java.base/jdk.internal.access=ALL-UNNAMED",
+                    "--add-opens=java.base/jdk.internal.access=ALL-UNNAMED",
+                    "--add-opens=java.base/java.io=ALL-UNNAMED",
+                )
+            }
+        }
+    }
+
     buildFeatures {
         compose = true
         // The version name ends up in a backup file, so a person reading one knows what wrote it.
@@ -95,6 +118,15 @@ dependencies {
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.kotlinx.serialization.json)
+    testImplementation(libs.robolectric)
+    testImplementation(libs.roborazzi)
+    testImplementation(libs.roborazzi.compose)
+    testImplementation(libs.roborazzi.junit.rule)
+    testImplementation(platform(libs.androidx.compose.bom))
+    testImplementation(libs.androidx.compose.ui.test.junit4)
+    testImplementation(libs.androidx.test.core)
+    testImplementation(libs.androidx.test.ext.junit)
+    debugImplementation(libs.androidx.compose.ui.test.manifest)
 
     androidTestImplementation(libs.junit)
     androidTestImplementation(libs.androidx.test.core)

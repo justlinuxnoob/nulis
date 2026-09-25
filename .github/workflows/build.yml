@@ -26,11 +26,12 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - name: Set up JDK 17
+      # 21, not 17: the screenshot tests run Android 16 under Robolectric, which needs it.
+      - name: Set up JDK 21
         uses: actions/setup-java@v5
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: '21'
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
@@ -55,6 +56,11 @@ jobs:
 
       - name: Unit tests
         run: ./gradlew --no-daemon testPerfUnitTest
+
+      # Drives the real launcher through every screen on the JVM. No images are written unless
+      # asked for (`recordRoborazziDebug`), but a screen that crashes fails here.
+      - name: Screenshot tours
+        run: ./gradlew --no-daemon testDebugUnitTest --tests 'com.nulis.launcher.screenshots.*'
 
       - name: Lint
         run: ./gradlew --no-daemon lintPerf
